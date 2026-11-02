@@ -3,7 +3,7 @@
 import { AppData, Category, ID, Note, Project, Task } from './types/Schemas';
 import { DEFAULT_ACCENT, updateTheme } from './styles/Theme';
 import { DEFAULT_BACKGROUND_PRESET, GLOBAL_STYLES, UI, applyBackgroundPreset, normalizeBackgroundPreset } from './styles/Styles';
-import { buildHK, genId, todayStr } from './lib/Helpers';
+import { buildHK, genId, todayStr, playDoneSound } from './lib/Helpers';
 import { TaskSuggestionDraft } from './lib/AiTaskSuggestions';
 
 import { loadAppData, persistAppData, sanitizeAppDataForExport } from './data/AppStorage';
@@ -816,7 +816,6 @@ export default function App() {
                 groupByDate
                 onTaskClick={openTask}
                 onTaskCtx={(event, task) => setTaskContextMenu({ x: event.clientX, y: event.clientY, task })}
-                onToggle={toggleTask}
               />
             ) : (
               <KanbanView
@@ -954,6 +953,18 @@ export default function App() {
           y={taskContextMenu.y}
           onClose={() => setTaskContextMenu(null)}
           items={[
+            {
+              label: taskContextMenu.task.completed ? 'Отменить выполнение' : 'Выполнить',
+              icon: 'check',
+              onClick: () => {
+                if (!taskContextMenu.task.completed) {
+                  playDoneSound();
+                }
+
+                toggleTask(taskContextMenu.task.id);
+                setTaskContextMenu(null);
+              },
+            },
             {
               label: 'Изменить',
               icon: 'edit',

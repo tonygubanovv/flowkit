@@ -508,13 +508,6 @@ export function KanbanView({
                         isDragged={isDraggedCard}
                         isSelected={ctxMenu?.task.id === task.id}
                         onClick={() => onTaskClick(task)}
-                        onToggle={() => {
-                          if (!task.completed) {
-                            playDoneSound();
-                          }
-
-                          onToggle(task.id);
-                        }}
                         onContextMenu={(event) => {
                           event.preventDefault();
                           event.stopPropagation();

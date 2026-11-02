@@ -3,10 +3,10 @@
 // 1. Библиотека
 import { T } from '../styles/Theme'; 
 import { UI } from '../styles/Styles';
-import { Task, Project, Category, ID } from '../types/Schemas';
+import { Task, Project, Category } from '../types/Schemas';
 
 // 2. Компоненты
-import { Check, CatBadge, DateBadge, Icon, ProgressBar } from '../components/ui/UiExports';
+import { CatBadge, DateBadge, Icon, ProgressBar } from '../components/ui/UiExports';
 
 interface ListViewProps {
   tasks: Task[];
@@ -16,7 +16,6 @@ interface ListViewProps {
   groupByDate: boolean;
   onTaskClick: (task: Task) => void;
   onTaskCtx: (e: React.MouseEvent, task: Task) => void;
-  onToggle: (taskId: ID) => void;
 }
 
 export function ListView({ 
@@ -26,8 +25,7 @@ export function ListView({
   showProject, 
   groupByDate, 
   onTaskClick, 
-  onTaskCtx, 
-  onToggle 
+  onTaskCtx 
 }: ListViewProps) {
   const [showDone, setShowDone] = useState(false);
 
@@ -77,9 +75,7 @@ export function ListView({
   const renderRow = (task: Task) => {
     const cat = categories.find((c) => c.id === task.categoryId);
     const proj = projects.find((p) => p.id === task.projectId);
-    const col = proj?.columns.find((c) => c.id === task.columnId);
     
-    const isColDone = col?.isDone === true;
     const done = isTaskDone(task);
     const commentsCount = task.comments?.length || 0;
     const linksCount = task.links?.length || 0;
@@ -92,15 +88,6 @@ export function ListView({
         className={!done ? 'fk-hover-subtle' : undefined}
         style={UI.list.row(done)}
       >
-        <div 
-          onClick={e => e.stopPropagation()} 
-          style={UI.list.rowCheck(isColDone)}
-        >
-          <Check done={done} onToggle={() => {
-            if (!isColDone) onToggle(task.id);
-          }} />
-        </div>
-        
       <div style={UI.list.rowBody}>
           {/* Заголовок переносится и виден полностью */}
           <span style={UI.list.rowTitle(done)}>

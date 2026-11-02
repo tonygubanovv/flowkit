@@ -1,7 +1,7 @@
 ﻿import React, { memo, useState } from 'react';
 import { UI, glass } from '../styles/Styles';
 import { Task, Category, Project } from '../types/Schemas';
-import { Check, CatBadge, DateBadge, Icon, PriorityBadge } from './ui/UiExports';
+import { CatBadge, DateBadge, Icon, PriorityBadge } from './ui/UiExports';
 import { typographizeWithNbsp } from '../lib/Typograf';
 
 interface TaskCardProps {
@@ -10,7 +10,6 @@ interface TaskCardProps {
   projects: Project[];
   showProject?: boolean;
   onClick?: (e: React.MouseEvent) => void;
-  onToggle?: () => void;
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnd?: (e: React.DragEvent) => void;
   onContextMenu?: (e: React.MouseEvent) => void;
@@ -34,7 +33,6 @@ export const TaskCard = memo(
     projects,
     showProject,
     onClick,
-    onToggle,
     onDragStart,
     onDragEnd,
     onContextMenu,
@@ -79,10 +77,6 @@ export const TaskCard = memo(
           compact,
         })}
       >
-        <div style={UI.card.taskCheck}>
-          <Check done={isVisualDone} onToggle={() => onToggle?.()} />
-        </div>
-
         <div style={UI.card.taskBody}>
           <div
             style={UI.card.taskTitle(isVisualDone, !!cleanDesc, compact)}

@@ -291,7 +291,7 @@ export const G = {
       minWidth: 0,
       color: 'var(--text)',
       fontSize: 12,
-      fontWeight: 700,
+      fontWeight: 600,
       lineHeight: 1.35,
       overflowWrap: 'anywhere',
     } as CSSProperties,
@@ -517,14 +517,14 @@ export const UI = {
     modalTitle: {
       color: T.text,
       fontSize: 18,
-      fontWeight: 700,
+      fontWeight: 600,
       fontFamily,
     } as CSSProperties,
 
     taskTitle: (done: boolean, compact = false): CSSProperties => ({
       color: done ? 'var(--muted)' : 'var(--text)',
       fontSize: compact ? 12 : 15,
-      fontWeight: 700,
+      fontWeight: 600,
       lineHeight: compact ? 1.35 : 1.3,
       textDecoration: done ? 'line-through' : 'none',
       overflowWrap: compact ? 'anywhere' : undefined,
@@ -1032,7 +1032,7 @@ export const UI = {
 
     titleInput: {
       fontSize: 15,
-      fontWeight: 700,
+      fontWeight: 600,
       padding: '12px 14px',
       borderRadius: 12,
       background: 'rgba(255,255,255,0.035)',
@@ -1196,7 +1196,7 @@ export const UI = {
       WebkitBoxOrient: 'vertical',
       color: T.text,
       fontSize: 13,
-      fontWeight: 750,
+      fontWeight: 600,
       lineHeight: 1.35,
       fontFamily,
     } as CSSProperties,
@@ -1446,10 +1446,10 @@ export const UI = {
         background: active ? hover.background : base.background,
         border: `1px solid ${borderColor}`,
         borderRadius: BUTTON_RADIUS,
-        padding: compact ? '9px 10px' : '13px 16px',
+        padding: compact ? '9px 10px' : '15px 18px',
         display: 'flex',
         alignItems: 'flex-start',
-        gap: compact ? 9 : 12,
+        gap: compact ? 9 : 13,
         cursor: dragged ? 'grabbing' : 'pointer',
         opacity: dragged ? 0.3 : done ? 0.5 : 1,
         boxShadow,
@@ -1482,14 +1482,14 @@ export const UI = {
     taskTitle: (done: boolean, hasDescription = false, compact = false): CSSProperties => ({
       color: done ? 'var(--muted)' : 'var(--text)',
       fontSize: compact ? 12.5 : 14,
-      fontWeight: 700,
+      fontWeight: 600,
       lineHeight: 1.3,
       textDecoration: done ? 'line-through' : 'none',
       whiteSpace: 'nowrap',
       overflow: 'hidden',
       textOverflow: 'ellipsis',
       fontFamily,
-      marginBottom: compact ? 7 : hasDescription ? 6 : 10,
+      marginBottom: compact ? 7 : hasDescription ? 7 : 11,
     }),
 
     taskDescription: (done: boolean): CSSProperties => ({
@@ -1502,7 +1502,7 @@ export const UI = {
       overflow: 'hidden',
       opacity: done ? 0.6 : 1,
       fontFamily,
-      marginBottom: 10,
+      marginBottom: 11,
     }),
 
     taskMetaRow: {
@@ -1649,7 +1649,7 @@ export const UI = {
       background: 'transparent',
       color: T.text,
       fontSize: 26,
-      fontWeight: 800,
+      fontWeight: 700,
       fontFamily,
     } as CSSProperties,
 
@@ -2083,7 +2083,7 @@ export const UI = {
     miniCalendarTitle: {
       color: T.text,
       fontSize: 13,
-      fontWeight: 800,
+      fontWeight: 700,
       fontFamily,
     } as CSSProperties,
 
@@ -2237,7 +2237,7 @@ export const UI = {
       gap: 12,
       color: T.text,
       fontSize: 18,
-      fontWeight: 700,
+      fontWeight: 600,
       fontFamily,
     } as CSSProperties,
 
@@ -2469,7 +2469,7 @@ export const UI = {
     title: {
       color: T.text,
       fontSize: 16,
-      fontWeight: 700,
+      fontWeight: 600,
       fontFamily,
     } as CSSProperties,
 
@@ -2793,7 +2793,7 @@ export const UI = {
       gap: 10,
       color: 'var(--text)',
       fontSize: mobile ? 18 : 20,
-      fontWeight: 700,
+      fontWeight: 600,
       letterSpacing: '-0.4px',
       whiteSpace: 'nowrap',
       fontFamily,
@@ -2979,7 +2979,7 @@ export const UI = {
       marginBottom: 1,
       color: T.text,
       fontSize: level === 1 ? 14 : level === 2 ? 13.5 : 13,
-      fontWeight: 850,
+      fontWeight: 700,
       lineHeight: 1.3,
     }),
 
@@ -3607,7 +3607,7 @@ export const UI = {
     progressTitle: {
       color: T.text,
       fontSize: 15,
-      fontWeight: 800,
+      fontWeight: 700,
       letterSpacing: -0.3,
       fontFamily,
     } as CSSProperties,
@@ -3641,7 +3641,7 @@ export const UI = {
       borderBottom: `2px solid ${T.border}`,
       color: T.text,
       fontSize: 13,
-      fontWeight: 800,
+      fontWeight: 700,
       textTransform: 'uppercase',
       letterSpacing: 0.5,
       fontFamily,
@@ -3792,7 +3792,7 @@ export const UI = {
     emptyTitle: {
       color: 'var(--text)',
       fontSize: 18,
-      fontWeight: 800,
+      fontWeight: 700,
       fontFamily,
     } as CSSProperties,
 
@@ -3829,7 +3829,7 @@ export const UI = {
       color: 'var(--text)',
       fontSize: 16,
       lineHeight: 1.35,
-      fontWeight: 800,
+      fontWeight: 700,
       wordBreak: 'break-word',
       fontFamily,
     } as CSSProperties,
@@ -3969,7 +3969,7 @@ export const UI = {
       color: 'var(--text)',
       fontSize: 28,
       lineHeight: 1.1,
-      fontWeight: 850,
+      fontWeight: 700,
       letterSpacing: '-0.6px',
       fontFamily,
     } as CSSProperties,
@@ -4144,7 +4144,7 @@ export const UI = {
       color: 'var(--text)',
       fontSize: 12,
       lineHeight: 1.35,
-      fontWeight: 700,
+      fontWeight: 600,
       flex: 1,
       minWidth: 0,
       display: '-webkit-box',
@@ -4244,7 +4244,7 @@ export const UI = {
     summaryTitle: {
       color: T.text,
       fontSize: 26,
-      fontWeight: 800,
+      fontWeight: 700,
       letterSpacing: 0,
       fontFamily,
     } as CSSProperties,
@@ -4324,7 +4324,7 @@ export const UI = {
     panelTitle: {
       color: 'var(--text)',
       fontSize: 15,
-      fontWeight: 700,
+      fontWeight: 600,
       fontFamily,
     } as CSSProperties,
 
@@ -4809,7 +4809,7 @@ export const UI = {
     deadlineTitle: {
       color: T.text,
       fontSize: 14,
-      fontWeight: 700,
+      fontWeight: 600,
       lineHeight: 1.4,
       fontFamily,
     } as CSSProperties,
@@ -4842,7 +4842,7 @@ export const UI = {
     sectionTitle: (compact = false): CSSProperties => ({
       color: T.text,
       fontSize: 16,
-      fontWeight: 800,
+      fontWeight: 700,
       marginBottom: compact ? 20 : 24,
       fontFamily,
     }),
@@ -5154,7 +5154,7 @@ export const UI = {
     reportTitle: {
       color: T.text,
       fontSize: 18,
-      fontWeight: 800,
+      fontWeight: 700,
       fontFamily,
     } as CSSProperties,
 
@@ -5277,7 +5277,7 @@ export const UI = {
       color: 'var(--text)',
       textAlign: 'center',
       fontSize: 13,
-      fontWeight: 850,
+      fontWeight: 700,
       whiteSpace: 'nowrap',
       fontFamily,
     } as CSSProperties,
@@ -5403,7 +5403,7 @@ export const UI = {
     columnTitle: {
       color: 'var(--text)',
       fontSize: 13,
-      fontWeight: 800,
+      fontWeight: 700,
       letterSpacing: 0.8,
     } as CSSProperties,
     columnCount: {
@@ -5486,8 +5486,8 @@ export const GLOBAL_STYLES = `
         textarea:focus,
         select:focus {
           outline: none;
-          border-color: var(--accent);
-          box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent);
+          border-color: var(--border-strong);
+          box-shadow: 0 0 0 1px var(--border-strong);
         }
 
         ::-webkit-scrollbar {
@@ -5633,8 +5633,8 @@ export const GLOBAL_STYLES = `
         .fk-accent-preset:hover { border-color: var(--preset-color) !important; background: color-mix(in srgb, var(--preset-color) 16%, var(--card-hov)) !important; color: var(--text) !important; box-shadow: 0 10px 22px rgba(0,0,0,.16), 0 0 0 1px color-mix(in srgb, var(--preset-color) 28%, transparent) !important; }
         .fk-color-swatch:hover,
         .fk-native-color:hover { filter: brightness(1.08) saturate(1.05) !important; box-shadow: 0 10px 22px rgba(0,0,0,.18) !important; }
-        .fk-hex-input:hover,
-        .fk-hex-input:focus { background: ${ALPHA_COLORS.subtleCard} !important; border-color: var(--accent) !important; box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent) !important; }
+        .fk-hex-input:hover { border-color: var(--border-hover) !important; }
+        .fk-hex-input:focus { background: ${ALPHA_COLORS.subtleCard} !important; border-color: var(--border-strong) !important; box-shadow: 0 0 0 1px var(--border-strong) !important; }
         .fk-chip:hover:not(:disabled) { filter: brightness(1.14) saturate(1.05) !important; box-shadow: 0 0 0 1px var(--border-hover), inset 0 1px 0 rgba(255,255,255,.06) !important; }
         .fk-hover-subtle:hover { background: var(--card-hov) !important; color: var(--text) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.05) !important; }
         .fk-hover-surface:hover { background: var(--card-hov) !important; color: var(--text) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 0 0 1px var(--border-hover) !important; }
