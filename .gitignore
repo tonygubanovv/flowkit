@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.env.*
+npm-debug.log*
+
+# Локальные правила проекта: не выкладываем наружу, остаются только на диске.
+AGENTS.md
+DESIGN_RULES.md
+PROJECT_CONTEXT.md
