@@ -20,8 +20,6 @@ interface SidebarProps {
   onSearch: () => void;
   isMobile: boolean;
   onClose: () => void;
-  collapsed: boolean;
-  setCollapsed: (c: boolean) => void;
 }
 
 const NoteIcon = ({
@@ -63,8 +61,6 @@ export function Sidebar({
   onSearch,
   isMobile,
   onClose,
-  collapsed,
-  setCollapsed,
 }: SidebarProps) {
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
@@ -127,57 +123,6 @@ export function Sidebar({
 
     return <Icon name={item.icon} size={size} color={color} />;
   };
-
-  if (collapsed && !isMobile) {
-    return (
-      <div style={UI.sidebar.collapsedShell}>
-        <button
-          onClick={() => setCollapsed(false)}
-          aria-label="Развернуть панель"
-          title="Развернуть панель"
-          style={UI.sidebar.collapsedLogoButton()}
-        >
-          <Logo size={36} />
-        </button>
-
-        <button type="button" onClick={onSearch} title="Поиск задач" aria-label="Поиск задач"
-          className="fk-hover-subtle" style={UI.sidebar.collapsedNavItem(false)}>
-          <Icon name="search" size={18} />
-        </button>
-
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setActiveView(item.id)}
-            aria-current={isNavActive(item.id) ? 'page' : undefined}
-            disabled={item.id === 'kanban' && data.projects.length === 0}
-            onMouseEnter={() => setNavHover(item.id)}
-            onMouseLeave={() => setNavHover(null)}
-            title={item.id === 'kanban' && data.projects.length === 0 ? 'Сначала создайте проект' : item.lbl}
-            aria-label={item.lbl}
-            style={UI.sidebar.collapsedNavItem(isNavActive(item.id), navHover === item.id)}
-          >
-            {renderNavIcon(item, isNavActive(item.id), 20)}
-
-            {item.id === 'today' && (item.badge || 0) > 0 && (
-              <span style={UI.sidebar.collapsedDangerDot} />
-            )}
-          </button>
-        ))}
-
-        <div style={UI.sidebar.spacer} />
-
-        <button
-          onClick={() => setCollapsed(false)}
-          aria-label="Развернуть панель"
-          title="Развернуть панель"
-          style={UI.sidebar.collapsedExpandButton()}
-        >
-          <Icon name="expand" size={20} />
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div style={UI.sidebar.shell}>
@@ -254,6 +199,7 @@ export function Sidebar({
             return (
               <React.Fragment key={project.id}>
                 <div
+                  className="fk-project-row"
                   draggable
                   onDragStart={() => {
                     dragProj.current = project.id;
@@ -316,12 +262,12 @@ export function Sidebar({
                         <span style={UI.sidebar.projectNameState(isActive)}>
                           {project.name}
                         </span>
-                        <span style={UI.sidebar.projectCount(hov === project.id || isActive)}>
+                        <span className="fk-project-meta" style={UI.sidebar.projectCount()}>
                           {done}/{total}
                         </span>
                       </button>
                       <button type="button" title="Действия проекта" aria-label={`Действия проекта «${project.name}»`}
-                        className="fk-hover-subtle" style={styles.projectActions()}
+                        className="fk-project-meta fk-hover-subtle" style={styles.projectActions()}
                         onClick={(event) => {
                           const rect = event.currentTarget.getBoundingClientRect();
                           setCtxMenu({ x: rect.right, y: rect.bottom, proj: project });
@@ -403,19 +349,6 @@ export function Sidebar({
           <Icon name="settings" size={18} color={activeView === 'settings' ? 'var(--text)' : 'var(--muted)'} />
           Настройки
         </button>
-
-        {!isMobile && (
-          <div style={UI.sidebar.collapseRow}>
-            <button
-              type="button"
-              onClick={() => setCollapsed(true)}
-              style={UI.sidebar.collapseToggleButton()}
-            >
-              <Icon name="collapse" size={16} />
-              Свернуть панель
-            </button>
-          </div>
-        )}
       </div>
 
       {ctxMenu && (

@@ -3118,18 +3118,6 @@ export const UI = {
       fontFamily,
     } as CSSProperties,
 
-    collapsedShell: {
-      width: 64,
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      gap: 4,
-      padding: '14px 0',
-      borderRight: `1px solid ${ALPHA_COLORS.borderStrong}`,
-      background: 'var(--surface)',
-      fontFamily,
-    } as CSSProperties,
-
     brandBar: {
       padding: '2px 11px 18px',
       display: 'flex',
@@ -3149,28 +3137,6 @@ export const UI = {
     logoSvg: {
       display: 'block',
       flexShrink: 0,
-    } as CSSProperties,
-
-    collapsedActiveDot: {
-      position: 'absolute',
-      top: 10,
-      right: 10,
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      background: 'var(--accent-fill)',
-      boxShadow: '0 0 0 2px var(--surface)',
-    } as CSSProperties,
-
-    collapsedDangerDot: {
-      position: 'absolute',
-      top: 10,
-      right: 10,
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      background: 'var(--danger)',
-      border: '2px solid var(--surface)',
     } as CSSProperties,
 
     spacer: {
@@ -3211,24 +3177,6 @@ export const UI = {
       textAlign: 'center',
       boxSizing: 'border-box',
     } as CSSProperties,
-
-    collapsedLogoButton: (): CSSProperties =>
-      UI.control.button('ghost', 'md', false, { padding: 0, marginBottom: 14 }),
-
-    collapsedExpandButton: (): CSSProperties =>
-      UI.control.button('ghost', 'md', false, { padding: 8, color: 'var(--muted)' }),
-
-    collapseToggleButton: (): CSSProperties =>
-      UI.control.button('ghost', 'sm', false, {
-        color: 'var(--muted)',
-        background: 'none',
-        padding: '6px 11px',
-        gap: 10,
-        width: '100%',
-        justifyContent: 'flex-start',
-        fontSize: 13,
-        fontWeight: 500,
-      }),
 
     projectList: {
       flex: 1,
@@ -3305,11 +3253,10 @@ export const UI = {
       lineHeight: 1.25,
     }),
 
-    projectCount: (visible = false): CSSProperties => ({
+    projectCount: (): CSSProperties => ({
       color: 'var(--muted)',
       fontSize: 11,
       fontWeight: 600,
-      opacity: visible ? 0.9 : 0.65,
       transition: 'opacity 0.14s ease',
     }),
 
@@ -3331,10 +3278,6 @@ export const UI = {
       borderTop: `1px solid ${T.border}`,
     } as CSSProperties,
 
-    collapseRow: {
-      marginTop: 2,
-    } as CSSProperties,
-
     navItem: (active: boolean, hover = false, overrides?: CSSProperties): CSSProperties => ({
       width: '100%',
       minHeight: 32,
@@ -3354,22 +3297,6 @@ export const UI = {
       transition: 'background .14s ease, color .14s ease',
       fontFamily,
       ...overrides,
-    }),
-
-    collapsedNavItem: (active: boolean, hover = false): CSSProperties => ({
-      width: 40,
-      height: 32,
-      position: 'relative',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      border: 'none',
-      borderRadius: BUTTON_RADIUS,
-      background: active ? 'var(--card-act)' : hover ? 'var(--card-hov)' : 'transparent',
-      cursor: 'pointer',
-      boxShadow: 'none',
-      transition: 'background .14s ease',
-      fontFamily,
     }),
 
     projectRow: (active: boolean, over: boolean, hover = false): CSSProperties => ({
@@ -5466,6 +5393,10 @@ export const GLOBAL_STYLES = `
         select {
           transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease, filter .16s ease;
         }
+
+        .fk-project-meta { opacity: 0; pointer-events: none; }
+        .fk-project-row:hover .fk-project-meta,
+        .fk-project-row:has(:focus-visible) .fk-project-meta { opacity: 1; pointer-events: auto; }
 
         button:focus-visible,
         a:focus-visible {

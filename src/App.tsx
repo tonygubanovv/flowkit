@@ -41,7 +41,6 @@ import { defaultFilters, FilterMenu, FilterState } from './components/FilterBar'
 import { AiChatWidget } from './components/AiChatWidget';
 
 const STORAGE_VIEW_KEY = 'flowkit-view';
-const STORAGE_SIDEBAR_KEY = 'flowkit-sidebar';
 const STORAGE_KANBAN_KEY = 'flowkit-last-project';
 
 const GLOBAL_VIEWS = ['today', 'notes', 'analytics', 'calendar'];
@@ -260,7 +259,6 @@ export default function App() {
   const [themeVersion, setThemeVersion] = useState(0);
 
   const [activeView, setActiveView] = useState(() => readViewPreference(STORAGE_VIEW_KEY) || 'today');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readViewPreference(STORAGE_SIDEBAR_KEY) === 'true');
 
   const [projectModal, setProjectModal] = useState<Project | null>(null);
   const [taskModal, setTaskModal] = useState<{ task: Task; isNew: boolean } | null>(null);
@@ -315,9 +313,6 @@ export default function App() {
     writeViewPreference(STORAGE_VIEW_KEY, activeView);
   }, [activeView]);
 
-  useEffect(() => {
-    writeViewPreference(STORAGE_SIDEBAR_KEY, String(sidebarCollapsed));
-  }, [sidebarCollapsed]);
 
   const themeAccent = data.profile?.accentColor || DEFAULT_ACCENT;
   const backgroundPreset = normalizeBackgroundPreset(data.profile?.backgroundPreset || DEFAULT_BACKGROUND_PRESET);
@@ -715,8 +710,6 @@ export default function App() {
           onSearch={() => setShowSearch(true)}
           isMobile={false}
           onClose={() => {}}
-          collapsed={sidebarCollapsed}
-          setCollapsed={setSidebarCollapsed}
         />
       )}
 

@@ -27,8 +27,8 @@ export interface ThemeTokens {
   shadowLg: string;
 }
 
-export const FONT_FAMILY = "'Onest', sans-serif";
-export const FONT_MONO = "'JetBrains Mono', 'SFMono-Regular', Consolas, monospace";
+export const FONT_FAMILY = 'var(--font-family)';
+export const FONT_MONO = 'var(--font-mono)';
 
 export const RAW_COLORS = {
   white: '#ffffff',
@@ -331,8 +331,6 @@ export const updateTheme = (accentColor = DEFAULT_ACCENT): void => {
   setVar('--warn', T.warn);
   setVar('--shadow', T.shadow);
   setVar('--shadow-lg', T.shadowLg);
-  setVar('--font-family', FONT_FAMILY);
-  setVar('--font-mono', FONT_MONO);
   setVar('--color-white', RAW_COLORS.white);
   setVar('--color-black', RAW_COLORS.black);
   setVar('--logo-start', T.accent);
