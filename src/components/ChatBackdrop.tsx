@@ -10,6 +10,10 @@ export function ChatBackdrop() {
     let frame = 0;
     const move = (event: PointerEvent) => {
       if (event.pointerType !== 'mouse' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      if (event.target instanceof Element && event.target.closest('[data-chat-message], button, input, textarea')) {
+        leave();
+        return;
+      }
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         const rect = panel.getBoundingClientRect();

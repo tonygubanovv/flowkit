@@ -1644,6 +1644,7 @@ export const UI = {
       width: '100%',
       border: 'none',
       outline: 'none',
+      boxShadow: 'none',
       resize: 'none',
       overflow: 'hidden',
       background: 'transparent',

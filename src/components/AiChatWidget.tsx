@@ -254,7 +254,7 @@ export function AiChatWidget({ data, session, onSave, onSelectSession, onNewSess
 
         {messages.map((message) => (
           <div key={message.id} style={styles.row(message.role)}>
-            <div style={styles.bubble(message.role, message.pending)}>
+            <div data-chat-message style={styles.bubble(message.role, message.pending)}>
               {message.role === 'assistant' ? <MarkdownText text={message.content} /> : message.content}
             </div>
           </div>

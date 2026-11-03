@@ -133,11 +133,10 @@ export const AI_CHAT_STYLES = {
     padding: role === 'user' ? '10px 12px' : '11px 12px',
     borderRadius: role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
     border: role === 'user' ? '1px solid transparent' : '1px solid var(--border2)',
-    background: role === 'user' ? 'var(--accent-fill)' : 'rgba(255,255,255,0.045)',
-    color: role === 'user' ? 'var(--accent-text)' : T.text,
+    background: role === 'user' ? 'var(--accent-fill)' : 'var(--card)',
+    color: role === 'user' ? 'var(--accent-text)' : pending ? T.muted : T.text,
     fontSize: 13,
     lineHeight: 1.45,
-    opacity: pending ? 0.72 : 1,
     overflowWrap: 'anywhere',
   }),
   composer: {
@@ -232,7 +231,7 @@ export const CHAT_BACKGROUND_CSS = `
   content: ''; position: absolute; inset: 0; pointer-events: none;
   background-image: radial-gradient(circle, color-mix(in srgb, var(--accent) 45%, var(--muted)) 1px, transparent 1.3px);
   background-size: 12px 12px;
-  mask-image: radial-gradient(circle 90px at var(--chat-pointer-x, -200px) var(--chat-pointer-y, -200px), black, transparent);
+  mask-image: radial-gradient(circle 65px at var(--chat-pointer-x, -200px) var(--chat-pointer-y, -200px), black, transparent);
   opacity: var(--chat-pointer-visible, 0);
 }
 @media (prefers-reduced-motion: reduce) {
