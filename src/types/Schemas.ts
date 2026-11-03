@@ -117,7 +117,23 @@ export interface Hotkeys {
   search: string;
 }
 
+export interface AiChatMessage {
+  id: ID;
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface AiChatSession {
+  id: ID;
+  title: string;
+  updatedAt: string;
+  messages: AiChatMessage[];
+  draft: string;
+  contextTaskIds: ID[];
+}
+
 export interface AppData {
+  aiChats?: AiChatSession[];
   projects: Project[];
   categories: Category[];
   tasks: Task[];

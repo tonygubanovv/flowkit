@@ -4,6 +4,30 @@ import { UI } from './Styles';
 import { T } from './Theme';
 
 export const AI_CHAT_STYLES = {
+  backdrop: {
+    position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
+    backgroundImage: 'radial-gradient(circle, color-mix(in srgb, var(--muted) 14%, transparent) .7px, transparent .9px)',
+    backgroundSize: '12px 12px',
+  } as CSSProperties,
+  historyWrap: { position: 'relative', minWidth: 0, flex: 1 } as CSSProperties,
+  historyTrigger: {
+    display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, maxWidth: '100%',
+    padding: '6px 4px', border: 'none', borderRadius: 6, background: 'transparent',
+    color: T.text, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+  } as CSSProperties,
+  historyTitle: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } as CSSProperties,
+  historyMenu: {
+    ...UI.modal.popover({}), position: 'absolute', top: 'calc(100% + 24px)', left: 0,
+    width: 'min(260px, calc(100vw - 80px))', padding: 10, zIndex: 1000,
+    display: 'flex', flexDirection: 'column', gap: 8,
+  } as CSSProperties,
+  historyList: { display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 'min(320px, 45dvh)', overflowY: 'auto' } as CSSProperties,
+  historyItem: (active: boolean): CSSProperties => ({
+    display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 8px',
+    border: 'none', borderRadius: 6, textAlign: 'left', cursor: 'pointer',
+    background: active ? 'var(--card-act)' : 'transparent', color: T.text2, fontSize: 12,
+  }),
+  historyDate: { flexShrink: 0, marginLeft: 'auto', color: T.muted, fontSize: 11 } as CSSProperties,
   shell: (mobile = false): CSSProperties => ({
     position: mobile ? 'fixed' : 'relative',
     inset: mobile ? 0 : undefined,
@@ -12,13 +36,16 @@ export const AI_CHAT_STYLES = {
     flexShrink: 0,
     height: mobile ? '100dvh' : '100%',
     minHeight: 0,
+    isolation: 'isolate',
     display: 'grid',
-    gridTemplateRows: 'auto 1fr auto',
+    gridTemplateRows: 'auto minmax(0, 1fr) auto',
+    gridTemplateColumns: 'minmax(0, 1fr)',
     overflow: 'hidden',
     borderLeft: '1px solid var(--border-strong)',
     background: 'var(--card)',
   }),
   header: {
+    position: 'relative', zIndex: 2, background: 'var(--card)',
     height: 57,
     display: 'flex',
     alignItems: 'center',
@@ -27,8 +54,10 @@ export const AI_CHAT_STYLES = {
     padding: '0 14px 0 16px',
     borderBottom: '1px solid var(--border2)',
   } as CSSProperties,
+  titleBody: { minWidth: 0, flex: 1 } as CSSProperties,
   titleWrap: {
     minWidth: 0,
+    flex: 1,
     display: 'flex',
     alignItems: 'center',
     gap: 10,
@@ -60,6 +89,7 @@ export const AI_CHAT_STYLES = {
     textOverflow: 'ellipsis',
   } as CSSProperties,
   messages: {
+    position: 'relative', zIndex: 1,
     minHeight: 0,
     display: 'flex',
     flexDirection: 'column',
@@ -111,17 +141,18 @@ export const AI_CHAT_STYLES = {
     overflowWrap: 'anywhere',
   }),
   composer: {
-    position: 'relative',
+    position: 'relative', zIndex: 1,
     display: 'grid',
-    gridTemplateColumns: '1fr auto',
+    gridTemplateColumns: 'minmax(0, 1fr) auto',
     gap: 10,
     margin: 12,
     padding: 12,
     borderRadius: 12,
     border: '1px solid var(--border-input)',
-    background: 'rgba(0,0,0,0.08)',
+    background: 'var(--card)',
   } as CSSProperties,
   input: {
+    minWidth: 0,
     minHeight: 42,
     maxHeight: 120,
     resize: 'none',
@@ -195,3 +226,16 @@ export const AI_CHAT_STYLES = {
     lineHeight: 1.45,
   } as CSSProperties,
 };
+
+export const CHAT_BACKGROUND_CSS = `
+.fk-chat-dotfield::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--accent) 65%, var(--muted)) 1px, transparent 1.3px);
+  background-size: 12px 12px;
+  mask-image: radial-gradient(circle 150px at var(--chat-pointer-x, -200px) var(--chat-pointer-y, -200px), black, transparent);
+  opacity: var(--chat-pointer-visible, 0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .fk-chat-dotfield::after { display: none; }
+}
+`;

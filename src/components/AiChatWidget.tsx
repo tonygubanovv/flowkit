@@ -1,12 +1,18 @@
+import { ChatBackdrop } from './ChatBackdrop';
+import { ChatHistoryMenu } from './ChatHistoryMenu';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { generateTaskChatResponse, getAiSettings, TaskChatMessage } from '../lib/AiTaskSuggestions';
-import { AppData, ID, Task } from '../types/Schemas';
+import { AiChatSession, AppData, ID, Task } from '../types/Schemas';
 import { UI } from '../styles/Styles';
 import { AI_CHAT_STYLES as styles } from '../styles/AiChatStyles';
 import { Btn, Icon, MarkdownText } from './ui/UiExports';
 
 interface AiChatWidgetProps {
   data: AppData;
+  session: AiChatSession;
+  onSave: (session: AiChatSession) => void;
+  onSelectSession: (id: string) => void;
+  onNewSession: () => void;
   activeView: string;
   onClose: () => void;
   isMobile?: boolean;
@@ -41,18 +47,47 @@ const detectMention = (value: string, cursor: number): MentionState | null => {
   return { query: query.toLowerCase(), start: cursor - query.length - 1, end: cursor };
 };
 
-export function AiChatWidget({ data, activeView, onClose, isMobile }: AiChatWidgetProps) {
-  const [messages, setMessages] = useState<ChatItem[]>([]);
-  const [draft, setDraft] = useState('');
+export function AiChatWidget({ data, session, onSave, onSelectSession, onNewSession, activeView, onClose, isMobile }: AiChatWidgetProps) {
+  const [messages, setMessages] = useState<ChatItem[]>(session.messages);
+  const [draft, setDraft] = useState(session.draft);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [contextTaskIds, setContextTaskIds] = useState<ID[]>([]);
+  const [contextTaskIds, setContextTaskIds] = useState<ID[]>(session.contextTaskIds);
   const [mention, setMention] = useState<MentionState | null>(null);
   const [mentionIdx, setMentionIdx] = useState(0);
   const controllerRef = useRef<AbortController | null>(null);
   const messagesRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const aiSettings = useMemo(() => getAiSettings(data), [data]);
+
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
+  const snapshot = useRef({ messages, draft, contextTaskIds });
+  snapshot.current = { messages, draft, contextTaskIds };
+  const [initialSignature] = useState(() => JSON.stringify({ messages: session.messages, draft: session.draft, contextTaskIds: session.contextTaskIds }));
+  const lastSaved = useRef(initialSignature);
+  const flushRef = useRef(() => {});
+  flushRef.current = () => {
+    const current = snapshot.current;
+    const savedMessages = current.messages.filter((message) => !message.pending).map(({ id, role, content }) => ({ id, role, content }));
+    const payload = { messages: savedMessages, draft: current.draft, contextTaskIds: current.contextTaskIds };
+    const signature = JSON.stringify(payload);
+    if (signature === lastSaved.current) return;
+    lastSaved.current = signature;
+    const firstQuestion = savedMessages.find((message) => message.role === 'user')?.content;
+    onSaveRef.current({
+      ...session, ...payload,
+      title: firstQuestion ? firstQuestion.replace(/\s+/g, ' ').slice(0, 80)
+        : current.draft.trim() ? `Черновик: ${current.draft.trim().replace(/\s+/g, ' ').slice(0, 65)}` : 'Новый разговор',
+      updatedAt: new Date().toISOString(),
+    });
+  };
+  useEffect(() => {
+    const timer = window.setTimeout(() => flushRef.current(), 700);
+    return () => window.clearTimeout(timer);
+  }, [messages, draft, contextTaskIds]);
+  useEffect(() => { flushRef.current(); }, [messages]);
+  useEffect(() => () => flushRef.current(), []);
 
   const projectNameById = useMemo(
     () => new Map(data.projects.map((project) => [project.id, project.name])),
@@ -123,7 +158,7 @@ export function AiChatWidget({ data, activeView, onClose, isMobile }: AiChatWidg
 
   const submit = async (textOverride?: string) => {
     const text = (textOverride ?? draft).trim();
-    if (!text || isLoading) return;
+    if (!text || isLoading || !aiSettings.apiKey) return;
 
     const userMessage: ChatItem = { id: makeId(), role: 'user', content: text };
     const pendingMessage: ChatItem = { id: makeId(), role: 'assistant', content: 'Думаю по задачам...', pending: true };
@@ -148,12 +183,14 @@ export function AiChatWidget({ data, activeView, onClose, isMobile }: AiChatWidg
         signal: controller.signal,
       });
 
+      if (controller.signal.aborted) return;
       setMessages((current) =>
         current.map((message) =>
           message.id === pendingMessage.id ? { ...message, content: answer, pending: false } : message,
         ),
       );
     } catch (caught) {
+      if (controller.signal.aborted) return;
       const message = caught instanceof Error ? caught.message : 'Не удалось получить ответ AI.';
       setMessages((current) => current.filter((item) => item.id !== pendingMessage.id));
       setError(message);
@@ -169,19 +206,24 @@ export function AiChatWidget({ data, activeView, onClose, isMobile }: AiChatWidg
 
   return (
     <section style={styles.shell(!!isMobile)} aria-label="AI-чат по задачам">
+      <ChatBackdrop />
       <div style={styles.header}>
         <div style={styles.titleWrap}>
           <span style={styles.titleIcon}>
             <Icon name="spark" size={17} />
           </span>
-          <div style={{ minWidth: 0 }}>
-            <div style={styles.title}>AI-чат</div>
+          <div style={styles.titleBody}>
+            <ChatHistoryMenu sessions={data.aiChats ?? []} activeId={session.id} title={session.title}
+              onSelect={onSelectSession} onNew={onNewSession} />
             <div style={styles.subtitle}>
               {selectedTasks.length > 0 ? `Выбрано задач: ${selectedTasks.length}` : `Задач в контексте: ${data.tasks.length}`}
             </div>
           </div>
         </div>
 
+        <Btn variant="ghost" onClick={onNewSession} title="Новый разговор" style={UI.control.iconButton(false, 30)}>
+          <Icon name="plus" size={16} />
+        </Btn>
         <Btn variant="ghost" onClick={onClose} title="Закрыть" style={UI.control.iconButton(false, 34)}>
           <Icon name="x" size={18} />
         </Btn>
@@ -256,6 +298,7 @@ export function AiChatWidget({ data, activeView, onClose, isMobile }: AiChatWidg
           ref={inputRef}
           value={draft}
           onChange={handleDraftChange}
+          onBlur={() => flushRef.current()}
           onKeyDown={(event) => {
             if (mention && mentionOptions.length > 0) {
               if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -282,7 +325,7 @@ export function AiChatWidget({ data, activeView, onClose, isMobile }: AiChatWidg
           }}
           aria-label="Сообщение AI-помощнику"
           placeholder={aiSettings.apiKey ? 'Спроси по задачам…' : 'Добавь API-ключ Neurly в настройках'}
-          disabled={isLoading || !aiSettings.apiKey}
+          disabled={isLoading}
           style={UI.control.input({ ...styles.input, opacity: aiSettings.apiKey ? 1 : 0.62 })}
         />
         <Btn

@@ -1,3 +1,4 @@
+import { createChatSession, saveChatSession } from './lib/ChatHistory';
 ﻿import React, { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 
 import { AppData, Category, ID, Note, Project, Task } from './types/Schemas';
@@ -268,6 +269,8 @@ export default function App() {
   const [undoState, setUndoState] = useState<UndoState | null>(null);
   const [showTaskSuggestions, setShowTaskSuggestions] = useState(false);
   const [showAiChat, setShowAiChat] = useState(false);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [newChat] = useState(createChatSession);
 
   const [filterProjectId, setFilterProjectId] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
@@ -942,6 +945,15 @@ export default function App() {
       {showAiChat && (
         <AiChatWidget
           data={data}
+          key={activeChatId ?? data.aiChats?.[0]?.id ?? newChat.id}
+          session={(data.aiChats ?? []).find((chat) => chat.id === activeChatId) ?? data.aiChats?.[0] ?? newChat}
+          onSave={(session) => setData((current) => saveChatSession(current, session))}
+          onSelectSession={setActiveChatId}
+          onNewSession={() => {
+            const session = createChatSession();
+            setData((current) => saveChatSession(current, session));
+            setActiveChatId(session.id);
+          }}
           activeView={activeView}
           onClose={() => setShowAiChat(false)}
           isMobile={isChatOverlay}

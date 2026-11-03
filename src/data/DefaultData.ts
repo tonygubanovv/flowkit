@@ -1,3 +1,4 @@
+import { normalizeChatSessions } from '../lib/ChatHistory';
 import { DEFAULT_ACCENT, DEFAULT_CATEGORY_COLORS, DEFAULT_PROJECT_COLORS } from '../styles/Theme';
 import { DEFAULT_BACKGROUND_PRESET, normalizeBackgroundPreset } from '../styles/Styles';
 import { normalizeTaskPriority } from '../lib/TaskPriority';
@@ -128,5 +129,6 @@ export const normalizeImportedData = (value: unknown): AppData => {
     hotkeys,
     profile,
     projectsOrder: [...orderedIds, ...missingIds],
+    aiChats: normalizeChatSessions(value.aiChats),
   };
 };

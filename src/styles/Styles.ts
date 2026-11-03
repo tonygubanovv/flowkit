@@ -5480,15 +5480,17 @@ export const GLOBAL_STYLES = `
           border-color: var(--border-hover);
         }
 
-        input:focus-visible,
-        textarea:focus-visible,
-        select:focus-visible,
         input:focus,
         textarea:focus,
         select:focus {
           outline: none;
-          border-color: var(--border-strong);
-          box-shadow: 0 0 0 1px var(--border-strong);
+          box-shadow: none;
+        }
+
+        input:focus-visible,
+        textarea:focus-visible,
+        select:focus-visible {
+          box-shadow: inset 0 -1px 0 var(--border-strong);
         }
 
         ::-webkit-scrollbar {
@@ -5635,7 +5637,7 @@ export const GLOBAL_STYLES = `
         .fk-color-swatch:hover,
         .fk-native-color:hover { filter: brightness(1.08) saturate(1.05) !important; box-shadow: 0 10px 22px rgba(0,0,0,.18) !important; }
         .fk-hex-input:hover { border-color: var(--border-hover) !important; }
-        .fk-hex-input:focus { background: ${ALPHA_COLORS.subtleCard} !important; border-color: var(--border-strong) !important; box-shadow: 0 0 0 1px var(--border-strong) !important; }
+        .fk-hex-input:focus { background: ${ALPHA_COLORS.subtleCard} !important; box-shadow: none !important; }
         .fk-chip:hover:not(:disabled) { filter: brightness(1.14) saturate(1.05) !important; box-shadow: 0 0 0 1px var(--border-hover), inset 0 1px 0 rgba(255,255,255,.06) !important; }
         .fk-hover-subtle:hover { background: var(--card-hov) !important; color: var(--text) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.05) !important; }
         .fk-hover-surface:hover { background: var(--card-hov) !important; color: var(--text) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 0 0 1px var(--border-hover) !important; }
