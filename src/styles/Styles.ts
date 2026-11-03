@@ -1372,9 +1372,9 @@ export const UI = {
       padding: '0 2px',
       color: 'var(--muted)',
       fontSize: 12,
-      fontWeight: 700,
+      fontWeight: 500,
       lineHeight: 1,
-      opacity: active ? 0.95 : 0.68,
+      opacity: active ? 1 : 0.9,
       transition: 'opacity 0.16s ease, color 0.16s ease',
       fontFamily,
     }),
@@ -1446,7 +1446,7 @@ export const UI = {
         background: active ? hover.background : base.background,
         border: `1px solid ${borderColor}`,
         borderRadius: BUTTON_RADIUS,
-        padding: compact ? '9px 10px' : '15px 18px',
+        padding: compact ? '9px 10px' : '12px 14px',
         display: 'flex',
         alignItems: 'flex-start',
         gap: compact ? 9 : 13,
@@ -1489,20 +1489,20 @@ export const UI = {
       overflow: 'hidden',
       textOverflow: 'ellipsis',
       fontFamily,
-      marginBottom: compact ? 7 : hasDescription ? 7 : 11,
+      marginBottom: compact ? 6 : hasDescription ? 6 : 8,
     }),
 
     taskDescription: (done: boolean): CSSProperties => ({
       color: 'var(--text2)',
-      fontSize: 13.5,
-      lineHeight: 1.5,
+      fontSize: 13,
+      lineHeight: 1.45,
       display: '-webkit-box',
       WebkitLineClamp: 2,
       WebkitBoxOrient: 'vertical',
       overflow: 'hidden',
       opacity: done ? 0.6 : 1,
       fontFamily,
-      marginBottom: 11,
+      marginBottom: 8,
     }),
 
     taskMetaRow: {
@@ -1516,7 +1516,7 @@ export const UI = {
       display: 'flex',
       alignItems: 'center',
       flexWrap: 'wrap',
-      gap: compact ? 6 : 10,
+      gap: compact ? 6 : 8,
     }),
 
     taskProjectMeta: {
@@ -2646,6 +2646,7 @@ export const UI = {
     projectSelectTrigger: (open = false, hasValue = false): CSSProperties =>
       UI.control.chipButton(open, hasValue ? 'var(--accent)' : 'var(--text)', {
         boxSizing: 'border-box',
+        whiteSpace: 'nowrap',
         minHeight: 36,
         padding: '6px 12px',
         background: open ? 'var(--card-act)' : 'var(--card)',
@@ -3513,13 +3514,13 @@ export const UI = {
       margin: '0 auto',
       display: 'flex',
       flexDirection: 'column',
-      gap: 32,
+      gap: 24,
     } as CSSProperties,
 
     progressPanel: {
-      padding: '20px 24px',
+      padding: '16px 20px',
       border: `1px solid ${T.border}`,
-      borderRadius: 16,
+      borderRadius: 12,
       background: T.card,
       boxShadow: T.shadow,
     } as CSSProperties,
@@ -3528,12 +3529,12 @@ export const UI = {
       display: 'flex',
       alignItems: 'center',
       gap: 14,
-      padding: '14px 20px',
+      padding: '12px 16px',
       borderBottom: `1px solid ${T.border}`,
       background: done ? T.surface : T.card,
       cursor: 'pointer',
       opacity: done ? 0.6 : 1,
-      transition: 'all 0.15s',
+      transition: 'background .15s ease, color .15s ease',
       fontFamily,
     }),
 
@@ -3670,7 +3671,7 @@ export const UI = {
     rowGroup: {
       overflow: 'hidden',
       border: `1px solid ${T.border}`,
-      borderRadius: 16,
+      borderRadius: 12,
       background: T.card,
       boxShadow: T.shadow,
     } as CSSProperties,
@@ -3696,7 +3697,7 @@ export const UI = {
       marginTop: 12,
       overflow: 'hidden',
       border: `1px dashed ${T.border2}`,
-      borderRadius: 16,
+      borderRadius: 12,
       background: 'transparent',
     } as CSSProperties,
   },
@@ -5469,8 +5470,8 @@ export const GLOBAL_STYLES = `
 
         button:focus-visible,
         a:focus-visible {
-          outline: none;
-          box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 38%, transparent);
+          outline: 2px solid var(--border-strong);
+          outline-offset: 2px;
         }
 
         input:hover,

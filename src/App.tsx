@@ -73,17 +73,17 @@ type UndoState = {
   task: Task;
 };
 
-const useMobile = () => {
+const useMobile = (breakpoint = 768) => {
   const [isMobile, setIsMobile] = useState(() => {
-    return typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+    return typeof window !== 'undefined' ? window.innerWidth < breakpoint : false;
   });
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    const handleResize = () => setIsMobile(window.innerWidth < breakpoint);
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [breakpoint]);
 
   return isMobile;
 };
@@ -273,6 +273,7 @@ export default function App() {
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
 
   const isMobile = useMobile();
+  const isChatOverlay = useMobile(1100);
 
   const activeProject = useMemo(() => {
     return data.projects.find((project) => project.id === activeView);
@@ -943,7 +944,7 @@ export default function App() {
           data={data}
           activeView={activeView}
           onClose={() => setShowAiChat(false)}
-          isMobile={isMobile}
+          isMobile={isChatOverlay}
         />
       )}
 
