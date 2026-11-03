@@ -5473,23 +5473,15 @@ export const GLOBAL_STYLES = `
           outline-offset: 2px;
         }
 
-        input:hover,
-        textarea:hover,
-        select:hover {
-          border-color: var(--border-hover);
-        }
-
         input:focus,
-        textarea:focus,
-        select:focus {
-          outline: none;
-          box-shadow: none;
-        }
-
         input:focus-visible,
+        textarea:focus,
         textarea:focus-visible,
-        select:focus-visible {
-          box-shadow: inset 0 -1px 0 var(--border-strong);
+        select:focus,
+        select:focus-visible,
+        [contenteditable="true"]:focus {
+          outline: none !important;
+          box-shadow: none !important;
         }
 
         ::-webkit-scrollbar {
@@ -5613,11 +5605,11 @@ export const GLOBAL_STYLES = `
         .fk-btn-primary { background: var(--accent-fill); color: var(--accent-text); }
         .fk-btn-primary svg { stroke: currentColor !important; color: currentColor !important; }
         .fk-btn-primary svg * { stroke: currentColor !important; }
-        .fk-btn-primary:hover:not(:disabled) { filter: brightness(1.12) saturate(1.04) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 12px 26px rgba(0,0,0,.45) !important; }
-        .fk-btn-ghost:hover:not(:disabled) { background: var(--card-hov) !important; color: var(--text) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 0 0 1px var(--border-hover) !important; }
-        .fk-btn-subtle:hover:not(:disabled) { background: var(--card-hov) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 0 0 1px var(--border-hover) !important; color: var(--text) !important; }
-        .fk-btn-outline:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 14%, transparent) !important; color: var(--text) !important; border-color: color-mix(in srgb, var(--accent) 92%, white 8%) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent) !important; }
-        .fk-btn-danger:hover:not(:disabled) { background: ${ALPHA_COLORS.dangerSoft} !important; border-color: rgba(239, 68, 68, 0.3) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.06) !important; }
+        .fk-btn-primary:hover:not(:disabled) { filter: none !important; box-shadow: none !important; }
+        .fk-btn-ghost:hover:not(:disabled) { background: var(--card-hov) !important; color: var(--text) !important; box-shadow: none !important; }
+        .fk-btn-subtle:hover:not(:disabled) { background: var(--card-hov) !important; box-shadow: none !important; color: var(--text) !important; }
+        .fk-btn-outline:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 14%, transparent) !important; color: var(--text) !important; border-color: color-mix(in srgb, var(--accent) 92%, white 8%) !important; box-shadow: none !important; }
+        .fk-btn-danger:hover:not(:disabled) { background: ${ALPHA_COLORS.dangerSoft} !important; border-color: rgba(239, 68, 68, 0.3) !important; box-shadow: none !important; }
 
         .fk-sidebar-add-zone:hover .fk-sidebar-add-trigger,
         .fk-sidebar-add-zone:focus-within .fk-sidebar-add-trigger {
@@ -5625,52 +5617,50 @@ export const GLOBAL_STYLES = `
           transform: translateY(0) !important;
           pointer-events: auto !important;
         }
-        .fk-modal-close:hover { background: ${ALPHA_COLORS.subtleHover} !important; color: var(--text) !important; box-shadow: 0 10px 24px rgba(0,0,0,.14) !important; }
-        .fk-modal-icon-danger:hover { background: ${ALPHA_COLORS.dangerSoft} !important; color: var(--danger) !important; box-shadow: 0 10px 24px rgba(0,0,0,.14) !important; }
+        .fk-modal-close:hover { background: ${ALPHA_COLORS.subtleHover} !important; color: var(--text) !important; box-shadow: none !important; }
+        .fk-modal-icon-danger:hover { background: ${ALPHA_COLORS.dangerSoft} !important; color: var(--danger) !important; box-shadow: none !important; }
         .fk-settings-tab:hover { color: var(--text) !important; background: ${ALPHA_COLORS.subtleSurface} !important; }
-        .fk-settings-avatar:hover { background: ${ALPHA_COLORS.subtleHover} !important; border-color: var(--accent) !important; box-shadow: 0 10px 22px rgba(0,0,0,.14) !important; }
-        .fk-settings-key:hover { background: ${ALPHA_COLORS.subtleHover} !important; border-color: var(--accent) !important; color: var(--text) !important; box-shadow: 0 10px 22px rgba(0,0,0,.14) !important; }
-        .fk-settings-data-btn:hover { background: ${ALPHA_COLORS.subtleHover} !important; border-color: var(--accent) !important; box-shadow: 0 10px 24px rgba(0,0,0,.16) !important; }
-        .fk-settings-save-preview:hover:not(:disabled) { filter: brightness(1.07) saturate(1.06) !important; box-shadow: 0 14px 30px rgba(0,0,0,.26), 0 0 0 1px color-mix(in srgb, currentColor 8%, transparent) !important; }
-        .fk-accent-preset:hover { border-color: var(--preset-color) !important; background: color-mix(in srgb, var(--preset-color) 16%, var(--card-hov)) !important; color: var(--text) !important; box-shadow: 0 10px 22px rgba(0,0,0,.16), 0 0 0 1px color-mix(in srgb, var(--preset-color) 28%, transparent) !important; }
+        .fk-settings-avatar:hover { background: ${ALPHA_COLORS.subtleHover} !important; border-color: var(--border-hover) !important; box-shadow: none !important; }
+        .fk-settings-key:hover { background: ${ALPHA_COLORS.subtleHover} !important; border-color: var(--border-hover) !important; color: var(--text) !important; box-shadow: none !important; }
+        .fk-settings-data-btn:hover { background: ${ALPHA_COLORS.subtleHover} !important; border-color: var(--border-hover) !important; box-shadow: none !important; }
+        .fk-settings-save-preview:hover:not(:disabled) { filter: none !important; box-shadow: none !important; }
+        .fk-accent-preset:hover { border-color: var(--preset-color) !important; background: color-mix(in srgb, var(--preset-color) 16%, var(--card-hov)) !important; color: var(--text) !important; box-shadow: none !important; }
         .fk-color-swatch:hover,
-        .fk-native-color:hover { filter: brightness(1.08) saturate(1.05) !important; box-shadow: 0 10px 22px rgba(0,0,0,.18) !important; }
-        .fk-hex-input:hover { border-color: var(--border-hover) !important; }
-        .fk-hex-input:focus { background: ${ALPHA_COLORS.subtleCard} !important; box-shadow: none !important; }
-        .fk-chip:hover:not(:disabled) { filter: brightness(1.14) saturate(1.05) !important; box-shadow: 0 0 0 1px var(--border-hover), inset 0 1px 0 rgba(255,255,255,.06) !important; }
-        .fk-hover-subtle:hover { background: var(--card-hov) !important; color: var(--text) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.05) !important; }
-        .fk-hover-surface:hover { background: var(--card-hov) !important; color: var(--text) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 0 0 1px var(--border-hover) !important; }
-        .fk-hover-border-accent:hover { background: color-mix(in srgb, var(--accent) 12%, var(--card-hov)) !important; border-color: var(--accent) !important; color: var(--text) !important; box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent), inset 0 1px 0 rgba(255,255,255,.06) !important; }
+        .fk-native-color:hover { filter: none !important; box-shadow: none !important; }
+        .fk-chip:hover:not(:disabled) { filter: none !important; box-shadow: none !important; }
+        .fk-hover-subtle:hover { background: var(--card-hov) !important; color: var(--text) !important; box-shadow: none !important; }
+        .fk-hover-surface:hover { background: var(--card-hov) !important; color: var(--text) !important; box-shadow: none !important; }
+        .fk-hover-border-accent:hover { background: color-mix(in srgb, var(--accent) 12%, var(--card-hov)) !important; border-color: var(--border-hover) !important; color: var(--text) !important; box-shadow: none !important; }
         .fk-hover-text:hover { color: var(--text) !important; }
-        .fk-hover-calendar-nav:hover { background: var(--card-hov) !important; color: var(--text) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 0 0 1px var(--border-hover) !important; }
-        .fk-hover-calendar-day:hover { background: ${ALPHA_COLORS.subtle} !important; color: var(--text) !important; box-shadow: inset 0 0 0 1px var(--border) !important; }
-        .fk-hover-danger-soft:hover { background: ${ALPHA_COLORS.dangerSoft} !important; color: var(--danger) !important; box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.28) !important; }
-        .fk-hover-mini-task:hover { background: ${EFFECTS.miniTaskGradientHover} !important; border-color: ${ALPHA_COLORS.borderCardHover} !important; box-shadow: 0 10px 22px rgba(0,0,0,.2) !important; }
+        .fk-hover-calendar-nav:hover { background: var(--card-hov) !important; color: var(--text) !important; box-shadow: none !important; }
+        .fk-hover-calendar-day:hover { background: ${ALPHA_COLORS.subtle} !important; color: var(--text) !important; box-shadow: none !important; }
+        .fk-hover-danger-soft:hover { background: ${ALPHA_COLORS.dangerSoft} !important; color: var(--danger) !important; box-shadow: none !important; }
+        .fk-hover-mini-task:hover { background: ${EFFECTS.miniTaskGradientHover} !important; border-color: ${ALPHA_COLORS.borderCardHover} !important; box-shadow: none !important; }
         .fk-hover-link { transition: opacity 0.12s ease; }
         .fk-hover-link:hover { text-decoration: underline !important; opacity: 0.78 !important; }
 
         .fk-analytics-control:hover {
           background: ${ALPHA_COLORS.subtleSurface} !important;
           color: var(--text) !important;
-          box-shadow: 0 10px 24px rgba(0,0,0,.14) !important;
+          box-shadow: none !important;
         }
 
         .fk-analytics-option:hover {
           background: ${ALPHA_COLORS.subtle} !important;
           color: var(--text) !important;
-          box-shadow: inset 0 0 0 1px var(--border-hover) !important;
+          box-shadow: none !important;
         }
 
         .fk-analytics-primary:hover:not(:disabled) {
           filter: none !important;
-          box-shadow: 0 12px 28px rgba(0,0,0,.22) !important;
+          box-shadow: none !important;
         }
 
         .fk-analytics-field:hover,
         .fk-analytics-field:focus {
           background: ${ALPHA_COLORS.subtleCard} !important;
           border-color: ${ALPHA_COLORS.borderCardStrong} !important;
-          box-shadow: 0 8px 20px rgba(0,0,0,.14) !important;
+          box-shadow: none !important;
         }
 
         }`;

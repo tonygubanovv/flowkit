@@ -153,32 +153,21 @@ export const ACCENT_PRESETS = [
 ] as const;
 
 export const FILL_PRESETS = [
-  { name: 'Бирюза', value: BRAND_COLORS.teal },
-  { name: 'Лес', value: BRAND_COLORS.emerald },
-  { name: 'Океан', value: BRAND_COLORS.blue },
-  { name: 'Фиолет', value: BRAND_COLORS.violet },
-  { name: 'Роза', value: BRAND_COLORS.rose },
-  { name: 'Янтарь', value: BRAND_COLORS.amber },
-  { name: 'Aurora', value: 'linear-gradient(135deg, #2dd4bf 0%, #60a5fa 52%, #a78bfa 100%)' },
-  { name: 'Sunset', value: 'linear-gradient(135deg, #fb7185 0%, #fb923c 52%, #fbbf24 100%)' },
-  { name: 'Mint', value: 'linear-gradient(135deg, #34d399 0%, #22d3ee 100%)' },
-  { name: 'Lavender', value: 'linear-gradient(135deg, #818cf8 0%, #e879f9 100%)' },
+  { name: 'Бирюзовый', value: BRAND_COLORS.teal },
+  { name: 'Зелёный', value: BRAND_COLORS.emerald },
+  { name: 'Лаймовый', value: BRAND_COLORS.lime },
+  { name: 'Янтарный', value: BRAND_COLORS.amber },
+  { name: 'Оранжевый', value: BRAND_COLORS.orange },
+  { name: 'Розовый', value: BRAND_COLORS.rose },
+  { name: 'Фуксия', value: BRAND_COLORS.fuchsia },
+  { name: 'Фиолетовый', value: BRAND_COLORS.violet },
+  { name: 'Индиго', value: BRAND_COLORS.indigo },
+  { name: 'Синий', value: BRAND_COLORS.blue },
+  { name: 'Голубой', value: BRAND_COLORS.cyan },
+  { name: 'Серый', value: BRAND_COLORS.slate },
 ] as const;
 
-export const THEME_PALETTE: string[] = [
-  BRAND_COLORS.teal,
-  BRAND_COLORS.emerald,
-  BRAND_COLORS.cyan,
-  BRAND_COLORS.blue,
-  BRAND_COLORS.indigo,
-  BRAND_COLORS.violet,
-  BRAND_COLORS.fuchsia,
-  BRAND_COLORS.rose,
-  BRAND_COLORS.orange,
-  BRAND_COLORS.amber,
-  BRAND_COLORS.lime,
-  BRAND_COLORS.slate,
-];
+export const THEME_PALETTE: string[] = FILL_PRESETS.map((preset) => preset.value);
 
 export const DEFAULT_PROJECT_COLORS = {
   work: DEFAULT_ACCENT,
