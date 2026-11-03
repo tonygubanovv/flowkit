@@ -14,6 +14,9 @@ export const normalizeMindMapUrl = (value: string): string | null => {
   } catch { return null; }
 };
 
+export const normalizeMindMapColor = (value: unknown): string | null =>
+  typeof value === 'string' && /^#[\da-f]{6}$/i.test(value) ? value : null;
+
 export const getMindMapMeta = (node: NodeObj): MindMapNodeMeta => {
   if (!record(node.metadata)) return {};
   const meta = node.metadata;
@@ -74,6 +77,29 @@ export const projectMindMapData = (data: MindElixirData, tasks: Task[], notes: N
   return { ...data, nodeData: projectNode(data.nodeData) };
 };
 
+const markdownCell = (value: string): string => value.replace(/[\r\n]+/g, ' ').trim();
+
+export const mindMapToMarkdown = (map: MindMap, tasks: Task[], notes: Note[], projects: Project[]): string => {
+  const taskById = new Map(tasks.map((task) => [task.id, task]));
+  const noteById = new Map(notes.map((note) => [note.id, note]));
+  const line = (node: NodeObj, depth: number): string => {
+    const meta = getMindMapMeta(node);
+    const task = meta.entity?.kind === 'task' ? taskById.get(meta.entity.id) : undefined;
+    const note = meta.entity?.kind === 'note' ? noteById.get(meta.entity.id) : undefined;
+    const topic = markdownCell(node.topic);
+    const text = node.hyperLink ? `[${topic}](${node.hyperLink})` : topic;
+    const marks = [
+      task ? null : note ? 'заметка' : meta.entity ? 'связь недоступна' : null,
+      node.image ? 'картинка' : null,
+      meta.attachments?.length ? `PDF: ${meta.attachments.map((file) => markdownCell(file.name)).join(', ')}` : null,
+    ].filter((mark): mark is string => !!mark);
+    const bullet = task ? (isDoneTask(task, projects) ? '- [x] ' : '- [ ] ') : '- ';
+    return `${'  '.repeat(depth)}${bullet}${text}${marks.length ? ` — ${marks.join(' · ')}` : ''}\n${(node.children || []).map((child) => line(child, depth + 1)).join('')}`;
+  };
+  const project = projects.find((item) => item.id === map.projectId);
+  return `# ${markdownCell(map.title)}\n\n${project ? `Проект: ${markdownCell(project.name)}\n\n` : ''}${line(map.data.nodeData, 0)}`;
+};
+
 export const normalizeMindMaps = (value: unknown): MindMap[] => {
   if (value === undefined) return [];
   if (!Array.isArray(value)) throw new Error('Некорректные карты в резервной копии');
@@ -92,6 +118,8 @@ export const normalizeMindMaps = (value: unknown): MindMap[] => {
       if (Array.isArray(raw.children)) node.children = raw.children.map((child) => cleanNode(child, depth + 1));
       if (Array.isArray(raw.tags)) node.tags = raw.tags.filter((tag): tag is string => typeof tag === 'string').slice(0, 10);
       if (typeof raw.hyperLink === 'string') node.hyperLink = normalizeMindMapUrl(raw.hyperLink) || undefined;
+      const branchColor = normalizeMindMapColor(raw.branchColor);
+      if (branchColor) node.branchColor = branchColor;
       if (record(raw.image) && rasterUrl(raw.image.url) && raw.image.url.length <= MIND_MAP_FILE_LIMIT * 1.4) {
         node.image = { url: raw.image.url, width: 200, height: 140, fit: 'contain' };
       }

@@ -3,9 +3,18 @@ import type { Theme } from 'mind-elixir';
 import { UI } from './Styles';
 import { BRAND_COLORS, FONT_FAMILY } from './Theme';
 
+export const MIND_MAP_BRANCH_COLORS = [
+  { name: 'Бирюзовый', value: BRAND_COLORS.teal },
+  { name: 'Синий', value: BRAND_COLORS.blue },
+  { name: 'Фиолетовый', value: BRAND_COLORS.violet },
+  { name: 'Янтарный', value: BRAND_COLORS.amber },
+  { name: 'Розовый', value: BRAND_COLORS.rose },
+  { name: 'Зелёный', value: BRAND_COLORS.emerald },
+] as const;
+
 export const MIND_MAP_THEME: Theme = {
   name: 'FlowKit', type: 'dark',
-  palette: [BRAND_COLORS.teal, BRAND_COLORS.blue, BRAND_COLORS.violet, BRAND_COLORS.amber, BRAND_COLORS.rose, BRAND_COLORS.emerald],
+  palette: MIND_MAP_BRANCH_COLORS.map((item) => item.value),
   cssVar: {
     '--bgcolor': 'var(--bg)', '--color': 'var(--text2)', '--main-color': 'var(--text)',
     '--main-bgcolor': 'var(--card)', '--main-bgcolor-transparent': 'var(--card)',
@@ -30,10 +39,23 @@ export const MIND_MAP_STYLES = {
     width: 300, maxHeight: 'min(480px, calc(100dvh - 96px))', overflowY: 'auto', zIndex: 1500,
     padding: 16, display: 'flex', flexDirection: 'column', gap: 14, animation: 'none' }),
   spacer: { marginLeft: 'auto' } as CSSProperties,
+  colorPopup: (x: number, y: number): CSSProperties => ({ ...UI.modal.popover({}), position: 'fixed',
+    left: `clamp(16px, ${x}px, calc(100vw - 262px))`, top: `clamp(72px, ${y}px, calc(100dvh - 160px))`,
+    width: 246, zIndex: 1500, padding: 12, display: 'flex', flexDirection: 'column', gap: 10, animation: 'none' }),
+  swatchRow: { display: 'flex', alignItems: 'center', gap: 8 } as CSSProperties,
+  swatch: (color: string, active: boolean): CSSProperties => ({
+    width: 24, height: 24, borderRadius: '50%', background: color, flexShrink: 0,
+    border: active ? '2px solid var(--text)' : '2px solid var(--border)',
+    boxShadow: 'none', padding: 0, cursor: 'pointer',
+  }),
   title: UI.control.input({ flex: 1, minWidth: 80, width: 'auto', padding: '4px 0', background: 'transparent', border: 'none', fontSize: 14, fontWeight: 600 }),
   row: { display: 'flex', alignItems: 'center', gap: 8 } as CSSProperties,
   canvas: { position: 'relative', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' } as CSSProperties,
   canvasControls: { position: 'absolute', left: 16, bottom: 14, display: 'flex', alignItems: 'center', padding: 3, gap: 2, borderRadius: 8, background: 'var(--card)', border: '1px solid var(--border)' } as CSSProperties,
+  selectionBar: { position: 'absolute', left: '50%', bottom: 14, transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 9, padding: '5px 6px 5px 12px', borderRadius: 8, background: 'var(--card)', border: '1px solid var(--border)', zIndex: 12 } as CSSProperties,
+  selectionCount: { color: 'var(--text2)', fontSize: 12, whiteSpace: 'nowrap' } as CSSProperties,
+  divider: { width: 1, height: 20, background: 'var(--border)', flexShrink: 0 } as CSSProperties,
+  notice: { position: 'absolute', left: 16, bottom: 56, display: 'flex', alignItems: 'center', gap: 8, maxWidth: 380, padding: '7px 8px 7px 12px', borderRadius: 8, background: 'var(--card)', border: '1px solid var(--danger)', color: 'var(--text)', fontSize: 12 } as CSSProperties,
   host: { width: '100%', height: '100%', position: 'absolute', inset: 0 } as CSSProperties,
   help: { position: 'absolute', bottom: 12, left: 16, right: 16, display: 'flex', justifyContent: 'space-between', pointerEvents: 'none', color: 'var(--muted)', fontSize: 11 } as CSSProperties,
   section: { display: 'flex', flexDirection: 'column', gap: 8 } as CSSProperties,
@@ -53,11 +75,11 @@ export const MIND_MAP_CSS = `
 .fk-mind-map #input-box { font-family: var(--font-family) !important; }
 .fk-mind-map me-root me-tpc { font-size: 19px; font-weight: 600; }
 .fk-mind-map me-tpc { font-size: 13px; box-shadow: none; }
-.fk-mind-map .map-container { cursor: grab; }
-.fk-mind-map .map-container:active { cursor: grabbing; }
 .fk-mind-map me-tpc { cursor: pointer; }
 .fk-mind-map me-tpc.selected { outline: none; box-shadow: 0 0 0 1px var(--accent); border-color: transparent !important; }
 .fk-mind-map me-tpc:focus-visible { outline: none; }
+.fk-mind-map .map-container .selection-area { background: var(--accent-dim) !important; border: 1px solid var(--accent) !important; border-radius: 3px; }
+.fk-mind-map .map-container me-tpc .show { background: var(--accent-mid); opacity: 1; }
 .fk-mind-map .context-menu { font-size: 12px; }
 .fk-mind-map .context-menu .menu-list { border-radius: 8px; border: 1px solid var(--border); box-shadow: none; }
 .fk-mind-map .context-menu .menu-list li:hover { background: var(--card-hov); filter: none; }

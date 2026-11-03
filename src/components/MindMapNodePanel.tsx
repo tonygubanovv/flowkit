@@ -6,7 +6,7 @@ import { genId } from '../lib/Helpers';
 import { isDoneTask } from '../lib/TaskDomain';
 import { mindMapPdfBlob, readMindMapFile } from '../data/MindMapFiles';
 import { Btn, Icon } from './ui/UiExports';
-import { MIND_MAP_STYLES as S } from '../styles/MindMapStyles';
+import { MIND_MAP_BRANCH_COLORS, MIND_MAP_STYLES as S } from '../styles/MindMapStyles';
 import type { MindMapNodeAction } from './MindMapEditor';
 
 const PdfAttachment = ({ file, onRemove }: { file: MindMapAttachment; onRemove: () => void }) => {
@@ -121,6 +121,15 @@ export function MindMapNodePanel({ node, tasks, notes, projects, usedBytes, onPa
       <Btn size="sm" variant="subtle" disabled={uploading} onClick={() => input.current?.click()} style={S.fullButton}><Icon name="plus" size={14} />{uploading ? 'Чтение файла…' : 'Картинка или PDF'}</Btn>
       <input ref={input} type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf" onChange={upload} style={S.hidden} aria-label="Добавить изображение или PDF" />
       <span style={S.muted}>До 5 МБ на файл · до 20 МБ на карту.<br />Файлы хранятся локально и входят в резервную копию.</span>
+    </div>}
+    {action === 'color' && <div style={S.section}>
+      <span style={S.label}>Цвет ветви</span>
+      <div style={S.swatchRow}>
+        {MIND_MAP_BRANCH_COLORS.map((item) => <button key={item.value} type="button" title={item.name} aria-label={item.name}
+          style={S.swatch(item.value, node.branchColor === item.value)} onClick={() => onPatch({ branchColor: item.value })} />)}
+      </div>
+      {node.branchColor && <Btn size="sm" onClick={() => onPatch({ branchColor: undefined })} style={S.fullButton}>Вернуть цвет темы</Btn>}
+      <span style={S.muted}>Цвет переходит на все ветви от этой.</span>
     </div>}
     {error && <span role="alert" style={S.error}>{error}</span>}
   </div>;

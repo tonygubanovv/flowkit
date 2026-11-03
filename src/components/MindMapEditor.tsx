@@ -14,9 +14,13 @@ export interface MindMapEditorHandle {
   center: () => void;
   fit: () => void;
   setAllExpanded: (expanded: boolean) => void;
+  setColor: (ids: string[], color: string | null) => void;
+  removeNodes: (ids: string[]) => void;
+  clearSelection: () => void;
+  exportSvg: () => Blob | null;
 }
 
-export type MindMapNodeAction = 'task' | 'note' | 'link' | 'files';
+export type MindMapNodeAction = 'task' | 'note' | 'link' | 'files' | 'color';
 
 interface Props {
   map: MindMap;
@@ -25,6 +29,7 @@ interface Props {
   projects: Project[];
   onChange: (data: MindElixirData) => void;
   onSelect: (node: NodeObj | null) => void;
+  onSelection: (nodes: NodeObj[]) => void;
   onNodeAction: (node: NodeObj, action: MindMapNodeAction, point: { x: number; y: number }) => void;
   onOpenEntity: (entity: NonNullable<MindMapNodeMeta['entity']>) => void;
   onCanvasContext: (point: { x: number; y: number }) => void;
@@ -32,18 +37,25 @@ interface Props {
 
 const COLLAPSE_ITEM = 'Свернуть ветвь';
 
+const emitSelection = (mind: MindElixir, props: Props) => {
+  const nodes = (mind.currentNodes || []).map((element) => ({ ...element.nodeObj }));
+  props.onSelect(nodes.length === 1 ? nodes[0] : null);
+  props.onSelection(nodes);
+};
+
+const findTopics = (mind: MindElixir, ids: string[]): Topic[] =>
+  ids.filter((id) => mind.getObjById(id, mind.nodeData)).map((id) => mind.findEle(id));
+
 const syncEntities = (mind: MindElixir, props: Props) => {
   const ids = mind.currentNodes.map((element) => element.nodeObj.id);
   mind.refresh(projectMindMapData(mind.getData(), props.tasks, props.notes, props.projects));
-  const selected = ids.filter((id) => mind.getObjById(id, mind.nodeData)).map((id) => mind.findEle(id));
-  if (selected.length) mind.selectNodes(selected);
-  props.onSelect(selected.length === 1 ? { ...selected[0].nodeObj } : null);
+  mind.selectNodes(findTopics(mind, ids));
+  emitSelection(mind, props);
 };
 
 export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function MindMapEditor(props, ref) {
   const host = useRef<HTMLDivElement>(null);
   const instance = useRef<MindElixir | null>(null);
-  const pan = useRef<{ id: number; x: number; y: number } | null>(null);
   const latest = useRef(props);
   latest.current = props;
   const saveRef = useRef<() => void>(() => {});
@@ -75,6 +87,41 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
       mind.refresh();
       saveRef.current();
     },
+    setColor: (ids, color) => {
+      const mind = instance.current;
+      if (!mind) return;
+      const topics = findTopics(mind, ids);
+      if (!topics.length) return;
+      topics.forEach((topic) => {
+        if (color) topic.nodeObj.branchColor = color;
+        else delete topic.nodeObj.branchColor;
+      });
+      syncEntities(mind, latest.current);
+      saveRef.current();
+    },
+    removeNodes: (ids) => {
+      const mind = instance.current;
+      if (!mind) return;
+      const topics = findTopics(mind, ids.filter((id) => id !== mind.nodeData.id));
+      if (topics.length) void mind.removeNodes(topics);
+    },
+    clearSelection: () => { instance.current?.clearSelection(); },
+    exportSvg: () => {
+      const mind = instance.current;
+      if (!mind) return null;
+      const current = mind.getData();
+      const ids = mind.currentNodes.map((element) => element.nodeObj.id);
+      const expanded = JSON.parse(JSON.stringify(current)) as MindElixirData;
+      walkMindMap(expanded.nodeData, (node) => { if (node.children?.length) node.expanded = true; });
+      mind.refresh(expanded);
+      try {
+        return mind.exportSvg(true);
+      } finally {
+        mind.refresh(current);
+        mind.selectNodes(findTopics(mind, ids));
+        emitSelection(mind, latest.current);
+      }
+    },
   }), []);
 
   useEffect(() => {
@@ -91,6 +138,20 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
       if (menu) menu.hidden = true;
       latest.current.onNodeAction({ ...node }, action, { x: event.clientX, y: event.clientY });
     };
+    const zoomByWheel = (event: WheelEvent) => {
+      if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+        event.preventDefault();
+        mind.move(-event.deltaX, 0);
+        return;
+      }
+      const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? event.deltaY * 40
+        : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? event.deltaY * mind.container.clientHeight
+        : event.deltaY;
+      const step = Math.max(-mind.scaleSensitivity, Math.min(mind.scaleSensitivity, -(unit / 10) * mind.scaleSensitivity));
+      if (!step) return;
+      event.preventDefault();
+      mind.scale(mind.scaleVal + step, { x: event.clientX, y: event.clientY });
+    };
     const mind: MindElixir = new MindElixir({
       el: host.current, theme: MIND_MAP_THEME, direction: 2, newTopicName: 'Новая мысль',
       contextMenu: { locale: { ...ru, addChild: 'Добавить ветвь', addSibling: 'Добавить соседний узел',
@@ -101,12 +162,13 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
           if (menu) menu.hidden = true;
           if (topic) mind.expandNode(topic);
         } },
+        { name: 'Цвет ветви', onclick: requestAction('color') },
         { name: 'Связать задачу', onclick: requestAction('task') },
         { name: 'Связать заметку', onclick: requestAction('note') },
         { name: 'Ссылка', onclick: requestAction('link') },
         { name: 'Изображение и PDF', onclick: requestAction('files') },
       ] }, toolBar: false,
-      allowUndo: true, keypress: true, overflowHidden: true, scaleMin: .2, scaleMax: 2,
+      allowUndo: true, keypress: true, handleWheel: zoomByWheel, scaleMin: .2, scaleMax: 2,
       before: { beginEdit: (element) => !getMindMapMeta(element?.nodeObj || mind.currentNodes[0]?.nodeObj || mind.nodeData).entity },
     });
     instance.current = mind;
@@ -119,14 +181,13 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
         return true;
       };
       mind.selectNode(mind.findEle(mind.nodeData.id));
-      latest.current.onSelect({ ...mind.nodeData });
+      emitSelection(mind, latest.current);
       const save = (defer = false) => {
         pending = mind.getData();
         if (timer) clearTimeout(timer);
         if (defer) timer = setTimeout(flush, 300);
         else flush();
-        const selected = mind.currentNodes[0]?.nodeObj;
-        latest.current.onSelect(selected ? { ...selected } : null);
+        emitSelection(mind, latest.current);
       };
       const undo = mind.undo.bind(mind);
       const redo = mind.redo.bind(mind);
@@ -135,9 +196,9 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
       mind.bus.addListener('operation', (operation) => { if (operation.name !== 'beginEdit') save(); });
       mind.bus.addListener('expandNode', () => save());
       mind.bus.addListener('changeDirection', () => save());
-      mind.bus.addListener('selectNodes', (nodes) => latest.current.onSelect(nodes.length === 1 ? { ...nodes[0] } : null));
-      mind.bus.addListener('selectNewNode', (node) => latest.current.onSelect({ ...node }));
-      mind.bus.addListener('unselectNodes', () => latest.current.onSelect(null));
+      mind.bus.addListener('selectNodes', () => emitSelection(mind, latest.current));
+      mind.bus.addListener('selectNewNode', () => emitSelection(mind, latest.current));
+      mind.bus.addListener('unselectNodes', () => emitSelection(mind, latest.current));
       mind.bus.addListener('scale', (value) => setScale(Math.round(value * 100)));
       mind.bus.addListener('updateArrowDelta', () => save(true));
       saveRef.current = save;
@@ -148,22 +209,11 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
         item.hidden = node.id === mind.nodeData.id || !node.children?.length;
         item.children[0].textContent = node.expanded === false ? 'Раскрыть ветвь' : COLLAPSE_ITEM;
       });
-      const wheel = (event: WheelEvent) => {
-        if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
-          event.preventDefault();
-          mind.move(-event.deltaX, 0);
-          return;
-        }
-        const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? event.deltaY * 40
-          : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? event.deltaY * mind.container.clientHeight
-          : event.deltaY;
-        const step = Math.max(-mind.scaleSensitivity, Math.min(mind.scaleSensitivity, -(unit / 10) * mind.scaleSensitivity));
-        if (!step) return;
-        event.preventDefault();
-        mind.scale(mind.scaleVal + step, { x: event.clientX, y: event.clientY });
+      const expandAll = (event: MouseEvent) => {
+        if ((event.target as Element | null)?.tagName === 'ME-EPD' && (event.ctrlKey || event.metaKey)) save();
       };
-      mind.container.addEventListener('wheel', wheel, { passive: false });
-      mind.disposable.push(() => mind.container.removeEventListener('wheel', wheel));
+      mind.container.addEventListener('click', expandAll);
+      mind.disposable.push(() => mind.container.removeEventListener('click', expandAll));
     } catch {
       setError(true);
     }
@@ -186,47 +236,16 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
 
   return <div className="fk-mind-map" data-mind-map style={S.canvas}>
     <style>{MIND_MAP_CSS}</style>
-    <div ref={host} style={S.host} aria-label="Полотно доски" onPointerDownCapture={(event) => {
-      if (event.button !== 0 || !(event.target instanceof Element) || event.target.closest('me-tpc, me-epd, #input-box, .context-menu, .svg-label, .topiclinks, .summary')) return;
-      event.preventDefault(); event.stopPropagation();
-      pan.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
-      event.currentTarget.setPointerCapture(event.pointerId);
-    }} onPointerMoveCapture={(event) => {
-      const current = pan.current;
-      if (!current || current.id !== event.pointerId) return;
-      event.stopPropagation();
-      instance.current?.move(event.clientX - current.x, event.clientY - current.y);
-      pan.current = { id: current.id, x: event.clientX, y: event.clientY };
-    }} onPointerUpCapture={(event) => {
-      if (!pan.current || pan.current.id !== event.pointerId) return;
-      event.stopPropagation(); pan.current = null;
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }} onPointerCancelCapture={() => { pan.current = null; }} onClickCapture={(event) => {
-      const mind = instance.current;
-      if (!mind || !(event.target instanceof Element)) return;
-      const dot = event.target.closest<HTMLElement>('me-epd');
-      if (dot) {
-        const topic = dot.parentElement?.querySelector<HTMLElement>('me-tpc') as Topic | null;
-        if (!topic) return;
-        event.preventDefault();
-        event.stopPropagation();
-        if (event.ctrlKey || event.metaKey) { mind.expandNodeAll(topic); saveRef.current(); }
-        else mind.expandNode(topic);
-        return;
-      }
-      const topic = event.target.closest('me-tpc') as Topic | null;
-      if (topic && !mind.currentNodes.includes(topic) && !event.ctrlKey && !event.metaKey && !event.shiftKey) mind.selectNode(topic);
-    }} onDoubleClickCapture={(event) => {
+    <div ref={host} style={S.host} aria-label="Полотно доски" onDoubleClickCapture={(event) => {
       const topic = event.target instanceof Element ? event.target.closest('me-tpc') as Topic | null : null;
       const entity = topic && getMindMapMeta(topic.nodeObj).entity;
       if (entity) { event.stopPropagation(); event.preventDefault(); latest.current.onOpenEntity(entity); }
-      else if (topic) { event.stopPropagation(); event.preventDefault(); void instance.current?.beginEdit(topic); }
     }} onContextMenuCapture={(event) => {
       const mind = instance.current;
-      if (!mind) return;
+      if (!mind || !(event.target instanceof Element) || event.nativeEvent.defaultPrevented) return;
       event.preventDefault();
       event.stopPropagation();
-      const element = event.target instanceof Element ? event.target : null;
+      const element = event.target;
       const topic = element?.closest<HTMLElement>('me-tpc')
         ?? element?.closest<HTMLElement>('me-epd')?.parentElement?.querySelector<HTMLElement>('me-tpc') ?? null;
       if (!topic) {

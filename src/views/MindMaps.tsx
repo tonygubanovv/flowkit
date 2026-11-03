@@ -1,14 +1,15 @@
 import React, { useMemo, useRef, useState } from 'react';
 import type { MindElixirData, NodeObj } from 'mind-elixir';
 import { MindMap, Note, Project, Task } from '../types/Schemas';
-import { getMindMapBytes, getMindMapMeta, walkMindMap } from '../lib/MindMaps';
+import { getMindMapBytes, getMindMapMeta, mindMapToMarkdown, walkMindMap } from '../lib/MindMaps';
 import { genId } from '../lib/Helpers';
 import { isDoneTask } from '../lib/TaskDomain';
+import { downloadMindMapFile, mindMapPngBlob, mindMapSvgBlob } from '../data/MindMapFiles';
 import { Btn, ContextMenu, Icon } from '../components/ui/UiExports';
 import { CustomDropdown } from '../components/modals/Shared';
 import { MindMapEditor, MindMapEditorHandle, MindMapNodeAction } from '../components/MindMapEditor';
 import { MindMapNodePanel } from '../components/MindMapNodePanel';
-import { MIND_MAP_STYLES as S } from '../styles/MindMapStyles';
+import { MIND_MAP_BRANCH_COLORS, MIND_MAP_STYLES as S } from '../styles/MindMapStyles';
 
 interface Props {
   maps: MindMap[];
@@ -33,6 +34,8 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
   const [title, setTitle] = useState(map.title);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [canvasMenu, setCanvasMenu] = useState<{ x: number; y: number } | null>(null);
+  const [selection, setSelection] = useState<NodeObj[]>([]);
+  const [notice, setNotice] = useState('');
   const usedBytes = useMemo(() => getMindMapBytes(map.data), [map.data]);
   const saveData = (data: MindElixirData) => props.onSave({ ...map, data, updatedAt: new Date().toISOString() });
   const project = props.projects.find((item) => item.id === map.projectId);
@@ -49,6 +52,22 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
       id: genId(), topic: task.title, tags: [isDoneTask(task, props.projects) ? 'Выполнена' : 'Задача'], metadata: { entity: { kind: 'task', id: task.id } },
     })) });
   };
+  const fileBase = map.title.trim().replace(/[\\/:*?"<>|]+/g, '-').slice(0, 60) || 'board';
+  const runExport = async (kind: 'png' | 'svg' | 'md') => {
+    setMenu(null);
+    setNotice('');
+    try {
+      if (kind === 'md') {
+        downloadMindMapFile(`${fileBase}.md`, new Blob([mindMapToMarkdown(map, props.tasks, props.notes, props.projects)], { type: 'text/markdown;charset=utf-8' }));
+        return;
+      }
+      const svg = editor.current?.exportSvg();
+      if (!svg) throw new Error('Доска ещё не открылась.');
+      downloadMindMapFile(`${fileBase}.${kind}`, kind === 'svg' ? await mindMapSvgBlob(svg) : await mindMapPngBlob(svg));
+    } catch (reason) {
+      setNotice(reason instanceof Error ? reason.message : 'Не удалось выгрузить доску.');
+    }
+  };
   return <section style={S.workspace} aria-label={`Доска «${map.title}»`}>
     <div style={S.toolbar}>
       {renaming ? <input autoFocus aria-label="Название доски" value={title} onChange={(event) => setTitle(event.target.value)}
@@ -63,7 +82,7 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
       <Btn size="sm" title="Действия с доской" onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setMenu({ x: rect.right, y: rect.bottom + 6 }); }}><Icon name="menu" size={15} /></Btn>
     </div>
     <div style={S.canvas}>
-      <MindMapEditor ref={editor} map={map} tasks={props.tasks} notes={props.notes} projects={props.projects} onChange={saveData} onSelect={setNode}
+      <MindMapEditor ref={editor} map={map} tasks={props.tasks} notes={props.notes} projects={props.projects} onChange={saveData} onSelect={setNode} onSelection={setSelection}
         onOpenEntity={(entity) => {
           const task = entity.kind === 'task' ? props.tasks.find((item) => item.id === entity.id) : undefined;
           const note = entity.kind === 'note' ? props.notes.find((item) => item.id === entity.id) : undefined;
@@ -76,6 +95,16 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
         <Btn size="sm" onClick={() => editor.current?.fit()} title="Вписать доску в окно"><Icon name="maximize" size={14} /></Btn>
         <Btn size="sm" onClick={() => editor.current?.center()} title="По центру"><Icon name="grid" size={14} /></Btn>
       </div>
+      {selection.length > 1 && <div style={S.selectionBar} role="toolbar" aria-label="Действия с выделенными ветвями">
+        <span style={S.selectionCount}>{selection.length} выбрано · перетащите, чтобы перенести</span>
+        <span style={S.divider} />
+        {MIND_MAP_BRANCH_COLORS.map((item) => <button key={item.value} type="button" title={item.name} aria-label={`Цвет ветвей: ${item.name}`}
+          style={S.swatch(item.value, false)} onClick={() => editor.current?.setColor(selection.map((node) => node.id), item.value)} />)}
+        <span style={S.divider} />
+        <Btn size="sm" onClick={() => editor.current?.removeNodes(selection.map((node) => node.id))} title="Удалить выбранные ветви"><Icon name="trash" size={14} /></Btn>
+        <Btn size="sm" onClick={() => editor.current?.clearSelection()} title="Снять выделение"><Icon name="x" size={14} /></Btn>
+      </div>}
+      {notice && <div role="alert" style={S.notice}><span>{notice}</span><Btn size="sm" onClick={() => setNotice('')} title="Закрыть сообщение"><Icon name="x" size={13} /></Btn></div>}
       {canvasMenu && <ContextMenu x={canvasMenu.x} y={canvasMenu.y} onClose={() => setCanvasMenu(null)} items={[
         { icon: 'plus', label: 'Добавить ветвь', onClick: () => editor.current?.addNode() },
         { icon: 'expand', label: 'Раскрыть все ветви', onClick: () => editor.current?.setAllExpanded(true) },
@@ -89,6 +118,11 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
     {menu && <ContextMenu x={menu.x} y={menu.y} onClose={() => setMenu(null)} items={[
       { icon: 'edit', label: 'Переименовать', onClick: () => { setTitle(map.title); setRenaming(true); } },
       ...(project ? [{ icon: 'list', label: 'Добавить задачи проекта', onClick: importProject }] : []),
+      '---', { icon: 'export', label: 'Выгрузить', children: [
+        { icon: 'image', label: 'PNG', onClick: () => { void runExport('png'); } },
+        { icon: 'file', label: 'SVG', onClick: () => { void runExport('svg'); } },
+        { icon: 'list', label: 'Markdown', onClick: () => { void runExport('md'); } },
+      ] },
       '---', { icon: 'trash', label: 'Удалить доску', danger: true, onClick: () => {
         if (window.confirm(`Удалить доску «${map.title}» и её вложения? Задачи и заметки сохранятся.`)) props.onDelete(map.id);
       } },

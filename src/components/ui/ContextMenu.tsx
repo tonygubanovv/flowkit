@@ -7,7 +7,7 @@ interface ContextMenuItem {
   label: string;
   icon?: string;
   danger?: boolean;
-  onClick: () => void;
+  onClick?: () => void;
   children?: ContextMenuItem[];
 }
 
@@ -53,7 +53,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
             <button
               onClick={() => {
                 if (!item.children?.length) {
-                  item.onClick();
+                  item.onClick?.();
                   onClose();
                 }
               }}
@@ -73,7 +73,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
                   <button
                     key={childIndex}
                     onClick={() => {
-                      child.onClick();
+                      child.onClick?.();
                       onClose();
                     }}
                     className={child.danger ? 'fk-hover-danger-soft' : 'fk-hover-subtle'}
