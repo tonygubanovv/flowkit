@@ -17,7 +17,6 @@ interface SidebarProps {
   onRenameProject: (id: ID, n: string) => void;
   onProjectColorChange: (id: ID, color: string) => void;
   onSettings: () => void;
-  onSearch: () => void;
   isMobile: boolean;
   onClose: () => void;
 }
@@ -58,7 +57,6 @@ export function Sidebar({
   onRenameProject,
   onProjectColorChange,
   onSettings,
-  onSearch,
   isMobile,
   onClose,
 }: SidebarProps) {
@@ -108,6 +106,7 @@ export function Sidebar({
     { id: 'calendar', lbl: 'Календарь', icon: 'calendar' },
     { id: 'kanban', lbl: 'Канбан', icon: 'grid' },
     { id: 'notes', lbl: 'Заметки', icon: 'note' },
+    { id: 'mindmaps', lbl: 'Доски', icon: 'mindMap' },
     { id: 'analytics', lbl: 'Аналитика', icon: 'stats' },
   ];
 
@@ -136,10 +135,6 @@ export function Sidebar({
           </div>
         </div>
       </div>
-
-      <button type="button" onClick={onSearch} style={styles.search()} className="fk-hover-subtle">
-        <Icon name="search" size={15} />Поиск задач
-      </button>
 
       <div style={UI.sidebar.navList}>
         {navItems.map((item) => (

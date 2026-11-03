@@ -1,6 +1,7 @@
-import { AiActionsMenu } from './components/AiActionsMenu';
+import { AiChatButton } from './components/AiChatButton';
 import { AppStatus, StorageNotice } from './components/AppStatus';
 import { createChatSession, saveChatSession } from './lib/ChatHistory';
+import { createMindMap, removeMindMap, upsertMindMap } from './lib/MindMaps';
 ﻿import React, { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { AppData, Category, ID, Note, Project, Task } from './types/Schemas';
@@ -43,13 +44,14 @@ import { AiChatWidget } from './components/AiChatWidget';
 const STORAGE_VIEW_KEY = 'flowkit-view';
 const STORAGE_KANBAN_KEY = 'flowkit-last-project';
 
-const GLOBAL_VIEWS = ['today', 'notes', 'analytics', 'calendar'];
+const GLOBAL_VIEWS = ['today', 'notes', 'analytics', 'calendar', 'mindmaps'];
 
 const AnalyticsView = lazy(() => import('./views/Analytics').then((module) => ({ default: module.AnalyticsView })));
 const CalendarView = lazy(() => import('./views/Calendar').then((module) => ({ default: module.CalendarView })));
 const KanbanView = lazy(() => import('./views/Kanban').then((module) => ({ default: module.KanbanView })));
 const ListView = lazy(() => import('./views/List').then((module) => ({ default: module.ListView })));
 const NotesView = lazy(() => import('./views/Notes').then((module) => ({ default: module.NotesView })));
+const MindMapsView = lazy(() => import('./views/MindMaps').then((module) => ({ default: module.MindMapsView })));
 
 const TaskModal = lazy(() => import('./components/modals/TaskModal').then((module) => ({ default: module.TaskModal })));
 const NoteModal = lazy(() => import('./components/modals/NoteModal').then((module) => ({ default: module.NoteModal })));
@@ -187,9 +189,11 @@ const ProjectGearMenu = ({
         type="button"
         onClick={() => setOpen((current) => !current)}
         className={open ? undefined : 'fk-hover-subtle'}
-        style={UI.app.headerIconButton(open)}
+        style={UI.app.quietIconButton(open)}
+        aria-label={activeProject ? 'Настройки канбана' : 'Настройки списка задач'}
+        title={activeProject ? 'Настройки канбана' : 'Настройки списка задач'}
       >
-        <Icon name="settings" size={20} />
+        <Icon name="settings" size={16} />
       </button>
 
       {open && (
@@ -263,6 +267,7 @@ export default function App() {
   const [projectModal, setProjectModal] = useState<Project | null>(null);
   const [taskModal, setTaskModal] = useState<{ task: Task; isNew: boolean } | null>(null);
   const [noteModal, setNoteModal] = useState<{ note: Note; isNew: boolean } | null>(null);
+  const [selectedMindMapId, setSelectedMindMapId] = useState<string | null>(null);
 
   const [taskContextMenu, setTaskContextMenu] = useState<TaskContextMenu | null>(null);
   const [noteContextMenu, setNoteContextMenu] = useState<NoteContextMenu | null>(null);
@@ -274,6 +279,7 @@ export default function App() {
   const [showDone, setShowDone] = useState(false);
   const [undoState, setUndoState] = useState<UndoState | null>(null);
   const [showTaskSuggestions, setShowTaskSuggestions] = useState(false);
+  const [suggestionInput, setSuggestionInput] = useState<{ prompt: string; taskIds: ID[] }>({ prompt: '', taskIds: [] });
   const [showAiChat, setShowAiChat] = useState(false);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [newChat, setNewChat] = useState(createChatSession);
@@ -306,6 +312,7 @@ export default function App() {
 
   const isGlobalView = GLOBAL_VIEWS.includes(activeView);
   const isNotesView = activeView === 'notes';
+  const isMindMapsView = activeView === 'mindmaps';
   const isAnalyticsView = activeView === 'analytics';
   const isCalendarView = activeView === 'calendar';
 
@@ -385,6 +392,7 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.target instanceof Element && event.target.closest('[data-mind-map]')) return;
       const hotkey = buildHK(event);
       const hotkeys = data.hotkeys;
 
@@ -562,6 +570,12 @@ export default function App() {
     });
   }, [data.profile?.accentColor]);
 
+  const openNewMindMap = () => {
+    const map = createMindMap(genId(), genId(), filterProjectId);
+    setData((current) => upsertMindMap(current, map));
+    setSelectedMindMapId(map.id);
+  };
+
   const exportData = useCallback(() => {
     const blob = new Blob([JSON.stringify(sanitizeAppDataForExport(data), null, 2)], {
       type: 'application/json',
@@ -676,6 +690,7 @@ export default function App() {
     notes: 'Заметки',
     analytics: 'Аналитика',
     calendar: 'Календарь',
+    mindmaps: 'Доски',
   };
 
   const kanbanColumns = useMemo(() => {
@@ -707,7 +722,6 @@ export default function App() {
           onRenameProject={renameProject}
           onProjectColorChange={updateProjectColor}
           onSettings={() => { setSettingsTab('profile'); setShowSettings(true); }}
-          onSearch={() => setShowSearch(true)}
           isMobile={false}
           onClose={() => {}}
         />
@@ -732,7 +746,7 @@ export default function App() {
             >
               {mainTitle}
 
-              {!isNotesView && !isAnalyticsView && !isCalendarView && (
+              {!isNotesView && !isMindMapsView && !isAnalyticsView && !isCalendarView && (
                 <ProjectGearMenu
                   activeProject={activeProject}
                   showDone={showDone}
@@ -750,7 +764,8 @@ export default function App() {
           </div>
 
           <div style={UI.app.toolbar}>
-            {!isNotesView && !isAnalyticsView && (
+            <button type="button" aria-label="Поиск задач" title="Поиск задач" onClick={() => setShowSearch(true)} style={UI.app.headerIconButton()} className="fk-hover-subtle"><Icon name="search" size={18} /></button>
+            {!isNotesView && !isMindMapsView && !isAnalyticsView && (
               <FilterMenu
                 filters={filters}
                 onChange={setFilters}
@@ -759,24 +774,30 @@ export default function App() {
               />
             )}
 
-            <AiActionsMenu onChat={() => setShowAiChat(true)} onSuggest={() => setShowTaskSuggestions(true)} canSuggest={!isNotesView && !isAnalyticsView} />
+            <AiChatButton onClick={() => setShowAiChat(true)} open={showAiChat} />
 
             <Btn
               variant="primary"
-              disabled={!isNotesView && data.projects.length === 0}
-              title={!isNotesView && data.projects.length === 0 ? 'Сначала создайте проект' : undefined}
-              onClick={isNotesView ? openNewNote : () => openNewTask()}
+              disabled={!isNotesView && !isMindMapsView && data.projects.length === 0}
+              title={!isNotesView && !isMindMapsView && data.projects.length === 0 ? 'Сначала создайте проект' : undefined}
+              onClick={isNotesView ? openNewNote : isMindMapsView ? openNewMindMap : () => openNewTask()}
               style={UI.app.primaryAction}
             >
               <Icon name="plus" size={20} />
-              {!isMobile && (isNotesView ? 'Заметка' : 'Задача')}
+              {!isMobile && (isNotesView ? 'Заметка' : isMindMapsView ? 'Доска' : 'Задача')}
             </Btn>
           </div>
         </header>
 
         <main key={activeView} style={UI.app.main}>
           <Suspense fallback={<AppStatus title="Загрузка раздела…" embedded />}>
-            {isAnalyticsView ? (
+            {isMindMapsView ? (
+              <MindMapsView maps={data.mindMaps || []} selectedId={selectedMindMapId} projectFilter={filterProjectId}
+                tasks={data.tasks} notes={data.notes} projects={data.projects} onSelect={setSelectedMindMapId}
+                onCreate={openNewMindMap} onSave={(map) => setData((current) => upsertMindMap(current, map))}
+                onDelete={(id) => setData((current) => removeMindMap(current, id))}
+                onOpenTask={openTask} onOpenNote={openNote} />
+            ) : isAnalyticsView ? (
               <AnalyticsView
                 tasks={data.tasks}
                 categories={data.categories}
@@ -933,6 +954,8 @@ export default function App() {
           <TaskSuggestionModal
             data={data}
             activeView={activeView}
+            initialPrompt={suggestionInput.prompt}
+            initialContextTaskIds={suggestionInput.taskIds}
             onAccept={createTaskFromSuggestion}
             onClose={() => setShowTaskSuggestions(false)}
             isMobile={isMobile}
@@ -948,6 +971,7 @@ export default function App() {
           onSave={(session) => setData((current) => saveChatSession(current, session))}
           onSelectSession={setActiveChatId}
           onConfigure={() => { setSettingsTab('ai'); setShowSettings(true); }}
+          onSuggest={(prompt, taskIds) => { setSuggestionInput({ prompt, taskIds }); setShowTaskSuggestions(true); }}
           onNewSession={() => {
             const empty = data.aiChats?.find((chat) => !chat.messages.length && !chat.draft.trim() && !chat.contextTaskIds.length);
             if (empty) { setActiveChatId(empty.id); return; }

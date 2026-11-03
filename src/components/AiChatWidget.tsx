@@ -14,6 +14,7 @@ interface AiChatWidgetProps {
   onSelectSession: (id: string) => void;
   onNewSession: () => void;
   onConfigure: () => void;
+  onSuggest: (prompt: string, contextTaskIds: ID[]) => void;
   activeView: string;
   onClose: () => void;
   isMobile?: boolean;
@@ -48,7 +49,7 @@ const detectMention = (value: string, cursor: number): MentionState | null => {
   return { query: query.toLowerCase(), start: cursor - query.length - 1, end: cursor };
 };
 
-export function AiChatWidget({ data, session, onSave, onSelectSession, onNewSession, onConfigure, activeView, onClose, isMobile }: AiChatWidgetProps) {
+export function AiChatWidget({ data, session, onSave, onSelectSession, onNewSession, onConfigure, onSuggest, activeView, onClose, isMobile }: AiChatWidgetProps) {
   const [messages, setMessages] = useState<ChatItem[]>(session.messages);
   const [draft, setDraft] = useState(session.draft);
   const [error, setError] = useState('');
@@ -273,6 +274,10 @@ export function AiChatWidget({ data, session, onSave, onSelectSession, onNewSess
           void submit();
         }}
       >
+        <div style={styles.suggestAction}>
+          <button type="button" className={UI.control.buttonClass('subtle')} style={UI.control.button('subtle', 'sm', !data.projects.length)}
+            onClick={() => { flushRef.current(); onSuggest(draft, contextTaskIds); }} disabled={!data.projects.length} title={!data.projects.length ? 'Сначала создайте проект' : 'Предложить задачи с проверкой перед добавлением'}><Icon name="spark" size={14} />Предложить задачи</button>
+        </div>
         {selectedTasks.length > 0 && (
           <div style={styles.contextRow}>
             {selectedTasks.map((task) => (

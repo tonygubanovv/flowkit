@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { T } from '../../styles/Theme';
 import { UI } from '../../styles/Styles';
 import { Icon } from './Icon';
@@ -21,6 +21,19 @@ interface ContextMenuProps {
 export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [openChildIndex, setOpenChildIndex] = useState<number | null>(null);
+  const [position, setPosition] = useState({ x, y });
+
+  useLayoutEffect(() => {
+    const place = () => {
+      const rect = ref.current?.getBoundingClientRect();
+      if (!rect) return;
+      const next = { x: Math.max(8, Math.min(x, window.innerWidth - rect.width - 8)), y: Math.max(8, Math.min(y, window.innerHeight - rect.height - 8)) };
+      setPosition((current) => current.x === next.x && current.y === next.y ? current : next);
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [x, y, items.length]);
 
   useEffect(() => {
     const fn = (e: MouseEvent) => {
@@ -31,7 +44,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
   }, [onClose]);
 
   return (
-    <div ref={ref} style={UI.menu.context(x, y)} onMouseLeave={() => setOpenChildIndex(null)}>
+    <div ref={ref} style={UI.menu.context(position.x, position.y)} onMouseLeave={() => setOpenChildIndex(null)}>
       {items.map((item, i) =>
         item === '---' ? (
           <div key={i} style={UI.menu.separator} />

@@ -2822,6 +2822,10 @@ export const UI = {
         boxShadow: active ? EFFECTS.glassRim : 'none',
       }),
 
+    quietIconButton: (active = false): CSSProperties => UI.control.iconButton(active, 28, {
+      border: 'none', background: active ? 'var(--card-act)' : 'transparent', color: 'var(--muted)', boxShadow: 'none',
+    }),
+
     primaryAction: {
       height: 36,
       padding: '0 16px',
@@ -5536,7 +5540,7 @@ export const GLOBAL_STYLES = `
         .fk-btn-primary { background: var(--accent-fill); color: var(--accent-text); }
         .fk-btn-primary svg { stroke: currentColor !important; color: currentColor !important; }
         .fk-btn-primary svg * { stroke: currentColor !important; }
-        .fk-btn-primary:hover:not(:disabled) { filter: none !important; box-shadow: none !important; }
+        .fk-btn-primary:hover:not(:disabled) { filter: brightness(1.06) !important; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 18%, transparent) !important; }
         .fk-btn-ghost:hover:not(:disabled) { background: var(--card-hov) !important; color: var(--text) !important; box-shadow: none !important; }
         .fk-btn-subtle:hover:not(:disabled) { background: var(--card-hov) !important; box-shadow: none !important; color: var(--text) !important; }
         .fk-btn-outline:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 14%, transparent) !important; color: var(--text) !important; border-color: color-mix(in srgb, var(--accent) 92%, white 8%) !important; box-shadow: none !important; }
@@ -5561,7 +5565,7 @@ export const GLOBAL_STYLES = `
         .fk-chip:hover:not(:disabled) { filter: none !important; box-shadow: none !important; }
         .fk-hover-subtle:hover { background: var(--card-hov) !important; color: var(--text) !important; box-shadow: none !important; }
         .fk-hover-surface:hover { background: var(--card-hov) !important; color: var(--text) !important; box-shadow: none !important; }
-        .fk-hover-border-accent:hover { background: color-mix(in srgb, var(--accent) 12%, var(--card-hov)) !important; border-color: var(--border-hover) !important; color: var(--text) !important; box-shadow: none !important; }
+        .fk-hover-border-accent:hover { background: var(--card-hov) !important; color: var(--text) !important; box-shadow: none !important; }
         .fk-hover-text:hover { color: var(--text) !important; }
         .fk-hover-calendar-nav:hover { background: var(--card-hov) !important; color: var(--text) !important; box-shadow: none !important; }
         .fk-hover-calendar-day:hover { background: ${ALPHA_COLORS.subtle} !important; color: var(--text) !important; box-shadow: none !important; }

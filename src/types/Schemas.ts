@@ -1,5 +1,27 @@
 ﻿
+import type { MindElixirData } from 'mind-elixir';
+
 export type ID = string;
+
+export interface MindMapAttachment {
+  id: ID;
+  name: string;
+  dataUrl: string;
+  size: number;
+}
+
+export interface MindMapNodeMeta {
+  entity?: { kind: 'task' | 'note'; id: ID };
+  attachments?: MindMapAttachment[];
+}
+
+export interface MindMap {
+  id: ID;
+  title: string;
+  projectId: ID | null;
+  updatedAt: string;
+  data: MindElixirData;
+}
 
 export interface Comment {
   id: ID;
@@ -133,6 +155,7 @@ export interface AiChatSession {
 }
 
 export interface AppData {
+  mindMaps?: MindMap[];
   aiChats?: AiChatSession[];
   projects: Project[];
   categories: Category[];

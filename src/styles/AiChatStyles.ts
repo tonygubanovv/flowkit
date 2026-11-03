@@ -4,6 +4,7 @@ import { UI } from './Styles';
 import { T } from './Theme';
 
 export const AI_CHAT_STYLES = {
+  suggestAction: { gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-start' } as CSSProperties,
   backdrop: {
     position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
     backgroundImage: 'radial-gradient(circle, color-mix(in srgb, var(--muted) 14%, transparent) .7px, transparent .9px)',

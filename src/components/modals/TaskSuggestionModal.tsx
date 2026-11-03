@@ -18,19 +18,21 @@ interface TaskSuggestionModalProps {
   onAccept: (suggestion: TaskSuggestionDraft) => void;
   onClose: () => void;
   isMobile?: boolean;
+  initialPrompt?: string;
+  initialContextTaskIds?: string[];
 }
 
 const getTaskSortDate = (task: AppData['tasks'][number]) =>
   task.statusUpdatedAt || task.completedAt || task.createdAt || '';
 
-export function TaskSuggestionModal({ data, activeView, onAccept, onClose, isMobile }: TaskSuggestionModalProps) {
+export function TaskSuggestionModal({ data, activeView, onAccept, onClose, isMobile, initialPrompt = '', initialContextTaskIds = [] }: TaskSuggestionModalProps) {
   const [suggestions, setSuggestions] = useState<TaskSuggestionDraft[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeDateSuggestionId, setActiveDateSuggestionId] = useState<string | null>(null);
-  const [prompt, setPrompt] = useState('');
-  const [contextMode, setContextMode] = useState<'all' | 'selected'>('all');
-  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+  const [prompt, setPrompt] = useState(initialPrompt);
+  const [contextMode, setContextMode] = useState<'all' | 'selected'>(initialContextTaskIds.length ? 'selected' : 'all');
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>(initialContextTaskIds);
   const [taskSearch, setTaskSearch] = useState('');
   const [taskStatusFilter, setTaskStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
   const [taskProjectFilter, setTaskProjectFilter] = useState<string | null>(null);

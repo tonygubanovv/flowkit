@@ -18,6 +18,7 @@ export const Icon = memo(({ name, size = 18, color = 'currentColor', style: s }:
     list: 'M4 6h16M4 10h16M4 14h16M4 18h16',
     grip: 'M9 5h.01M9 12h.01M9 19h.01M15 5h.01M15 12h.01M15 19h.01',
     grid: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
+    mindMap: 'M8 9h8v6H8zM12 9V4M4 4h16M4 4v3m16-3v3M12 15v5M4 20h16M4 20v-3m16 3v-3',
     plus: 'M12 4v16m-8-8h16',
     x: 'M6 18L18 6M6 6l12 12',
     check: 'M5 13l4 4L19 7',
