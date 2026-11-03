@@ -1,3 +1,4 @@
+import { SIDEBAR_STYLES as styles } from '../styles/SidebarStyles';
 ﻿import React, { useState, useRef } from 'react';
 import { UI } from '../styles/Styles';
 import { todayStr, genId } from '../lib/Helpers';
@@ -16,6 +17,7 @@ interface SidebarProps {
   onRenameProject: (id: ID, n: string) => void;
   onProjectColorChange: (id: ID, color: string) => void;
   onSettings: () => void;
+  onSearch: () => void;
   isMobile: boolean;
   onClose: () => void;
   collapsed: boolean;
@@ -58,6 +60,7 @@ export function Sidebar({
   onRenameProject,
   onProjectColorChange,
   onSettings,
+  onSearch,
   isMobile,
   onClose,
   collapsed,
@@ -107,9 +110,13 @@ export function Sidebar({
   const navItems = [
     { id: 'today', lbl: 'Сегодня', icon: 'sun', badge: todayCnt },
     { id: 'calendar', lbl: 'Календарь', icon: 'calendar' },
+    { id: 'kanban', lbl: 'Канбан', icon: 'grid' },
     { id: 'notes', lbl: 'Заметки', icon: 'note' },
     { id: 'analytics', lbl: 'Аналитика', icon: 'stats' },
   ];
+
+  const isNavActive = (id: string) => id === 'kanban'
+    ? data.projects.some((project) => project.id === activeView) : activeView === id;
 
   const renderNavIcon = (item: { id: string; icon: string }, isActive: boolean, size = 18) => {
     const color = isActive ? 'var(--text)' : 'var(--muted)';
@@ -126,21 +133,31 @@ export function Sidebar({
       <div style={UI.sidebar.collapsedShell}>
         <button
           onClick={() => setCollapsed(false)}
+          aria-label="Развернуть панель"
+          title="Развернуть панель"
           style={UI.sidebar.collapsedLogoButton()}
         >
           <Logo size={36} />
+        </button>
+
+        <button type="button" onClick={onSearch} title="Поиск задач" aria-label="Поиск задач"
+          className="fk-hover-subtle" style={UI.sidebar.collapsedNavItem(false)}>
+          <Icon name="search" size={18} />
         </button>
 
         {navItems.map((item) => (
           <button
             key={item.id}
             onClick={() => setActiveView(item.id)}
+            aria-current={isNavActive(item.id) ? 'page' : undefined}
+            disabled={item.id === 'kanban' && data.projects.length === 0}
             onMouseEnter={() => setNavHover(item.id)}
             onMouseLeave={() => setNavHover(null)}
-            title={item.lbl}
-            style={UI.sidebar.collapsedNavItem(activeView === item.id, navHover === item.id)}
+            title={item.id === 'kanban' && data.projects.length === 0 ? 'Сначала создайте проект' : item.lbl}
+            aria-label={item.lbl}
+            style={UI.sidebar.collapsedNavItem(isNavActive(item.id), navHover === item.id)}
           >
-            {renderNavIcon(item, activeView === item.id, 20)}
+            {renderNavIcon(item, isNavActive(item.id), 20)}
 
             {item.id === 'today' && (item.badge || 0) > 0 && (
               <span style={UI.sidebar.collapsedDangerDot} />
@@ -152,6 +169,8 @@ export function Sidebar({
 
         <button
           onClick={() => setCollapsed(false)}
+          aria-label="Развернуть панель"
+          title="Развернуть панель"
           style={UI.sidebar.collapsedExpandButton()}
         >
           <Icon name="expand" size={20} />
@@ -173,6 +192,10 @@ export function Sidebar({
         </div>
       </div>
 
+      <button type="button" onClick={onSearch} style={styles.search()} className="fk-hover-subtle">
+        <Icon name="search" size={15} />Поиск задач
+      </button>
+
       <div style={UI.sidebar.navList}>
         {navItems.map((item) => (
           <button
@@ -181,11 +204,14 @@ export function Sidebar({
               setActiveView(item.id);
               if (isMobile) onClose();
             }}
+            aria-current={isNavActive(item.id) ? 'page' : undefined}
+            disabled={item.id === 'kanban' && data.projects.length === 0}
+            title={item.id === 'kanban' && data.projects.length === 0 ? 'Сначала создайте проект' : undefined}
             onMouseEnter={() => setNavHover(item.id)}
             onMouseLeave={() => setNavHover(null)}
-            style={UI.sidebar.navItem(activeView === item.id, navHover === item.id)}
+            style={UI.sidebar.navItem(isNavActive(item.id), navHover === item.id)}
           >
-            {renderNavIcon(item, activeView === item.id, 18)}
+            {renderNavIcon(item, isNavActive(item.id), 18)}
 
             <span style={UI.sidebar.navLabel}>{item.lbl}</span>
 
@@ -208,6 +234,7 @@ export function Sidebar({
       >
         <Icon name={projectsOpen ? 'chevD' : 'chevR'} size={13} color="var(--muted)" />
         Проекты
+        <span style={styles.projectTotal}>{data.projects.length}</span>
       </button>
 
       {projectsOpen && (
@@ -282,6 +309,8 @@ export function Sidebar({
                           setRenamingId(project.id);
                           setRenameVal(project.name);
                         }}
+                        aria-current={isActive ? 'page' : undefined}
+                        title={`${project.name}: выполнено ${done} из ${total}`}
                         style={UI.sidebar.projectButton(isActive, hov === project.id)}
                       >
                         <span style={UI.sidebar.projectNameState(isActive)}>
@@ -290,6 +319,14 @@ export function Sidebar({
                         <span style={UI.sidebar.projectCount(hov === project.id || isActive)}>
                           {done}/{total}
                         </span>
+                      </button>
+                      <button type="button" title="Действия проекта" aria-label={`Действия проекта «${project.name}»`}
+                        className="fk-hover-subtle" style={styles.projectActions()}
+                        onClick={(event) => {
+                          const rect = event.currentTarget.getBoundingClientRect();
+                          setCtxMenu({ x: rect.right, y: rect.bottom, proj: project });
+                        }}>
+                        <Icon name="menu" size={14} />
                       </button>
                     </>
                   )}

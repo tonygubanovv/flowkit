@@ -230,9 +230,9 @@ export const AI_CHAT_STYLES = {
 export const CHAT_BACKGROUND_CSS = `
 .fk-chat-dotfield::after {
   content: ''; position: absolute; inset: 0; pointer-events: none;
-  background-image: radial-gradient(circle, color-mix(in srgb, var(--accent) 65%, var(--muted)) 1px, transparent 1.3px);
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--accent) 45%, var(--muted)) 1px, transparent 1.3px);
   background-size: 12px 12px;
-  mask-image: radial-gradient(circle 150px at var(--chat-pointer-x, -200px) var(--chat-pointer-y, -200px), black, transparent);
+  mask-image: radial-gradient(circle 90px at var(--chat-pointer-x, -200px) var(--chat-pointer-y, -200px), black, transparent);
   opacity: var(--chat-pointer-visible, 0);
 }
 @media (prefers-reduced-motion: reduce) {

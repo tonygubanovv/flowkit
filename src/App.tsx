@@ -1,5 +1,5 @@
 import { createChatSession, saveChatSession } from './lib/ChatHistory';
-﻿import React, { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+﻿import React, { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { AppData, Category, ID, Note, Project, Task } from './types/Schemas';
 import { DEFAULT_ACCENT, updateTheme } from './styles/Theme';
@@ -281,6 +281,19 @@ export default function App() {
   const activeProject = useMemo(() => {
     return data.projects.find((project) => project.id === activeView);
   }, [data.projects, activeView]);
+
+  const lastKanbanProjectId = useRef<string | null>(null);
+  useEffect(() => {
+    if (activeProject) lastKanbanProjectId.current = activeProject.id;
+  }, [activeProject?.id]);
+
+  const navigateFromSidebar = (view: string) => {
+    if (view !== 'kanban') { setActiveView(view); return; }
+    const remembered = data.projects.find((project) => project.id === lastKanbanProjectId.current);
+    const firstId = data.projectsOrder.find((id) => data.projects.some((project) => project.id === id));
+    const projectId = activeProject?.id ?? remembered?.id ?? firstId ?? data.projects[0]?.id;
+    if (projectId) setActiveView(projectId);
+  };
 
   const isGlobalView = GLOBAL_VIEWS.includes(activeView);
   const isNotesView = activeView === 'notes';
@@ -685,13 +698,14 @@ export default function App() {
         <Sidebar
           data={data}
           activeView={activeView}
-          setActiveView={setActiveView}
+          setActiveView={navigateFromSidebar}
           onAddProject={addNewProject}
           onReorderProjects={reorderProjectIds}
           onDelProject={deleteProject}
           onRenameProject={renameProject}
           onProjectColorChange={updateProjectColor}
           onSettings={() => setShowSettings(true)}
+          onSearch={() => setShowSearch(true)}
           isMobile={false}
           onClose={() => {}}
           collapsed={sidebarCollapsed}

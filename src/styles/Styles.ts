@@ -3308,7 +3308,7 @@ export const UI = {
       color: 'var(--muted)',
       fontSize: 11,
       fontWeight: 600,
-      opacity: visible ? 0.9 : 0,
+      opacity: visible ? 0.9 : 0.65,
       transition: 'opacity 0.14s ease',
     }),
 
@@ -3490,10 +3490,8 @@ export const UI = {
     addTrigger: (): CSSProperties =>
       UI.sidebar.navItem(false, false, {
         color: 'var(--muted)',
-        fontWeight: 620,
-        opacity: 0,
-        transform: 'translateY(-4px)',
-        pointerEvents: 'none',
+        fontWeight: 500,
+        opacity: 1,
       }),
   },
 
