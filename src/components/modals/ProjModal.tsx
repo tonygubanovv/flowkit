@@ -1,3 +1,4 @@
+import { APP_STATUS_STYLES } from '../../styles/AppStatusStyles';
 ﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { T } from '../../styles/Theme';
 import { UI } from '../../styles/Styles';
@@ -47,6 +48,7 @@ export function ProjModal({ project, onSave, onClose, isMobile }: ProjModalProps
         </div>
 
         <div style={UI.projectModal.body}>
+          {proj.columns.length === 0 && <p style={APP_STATUS_STYLES.text}>Добавьте первую колонку, чтобы создавать задачи в этом проекте.</p>}
           <div style={UI.projectModal.columns}>
             {proj.columns.map((col) => (
               <div key={col.id} style={UI.projectModal.columnCard}>

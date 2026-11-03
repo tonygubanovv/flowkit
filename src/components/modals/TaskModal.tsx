@@ -1,3 +1,4 @@
+import { isDoneTask } from '../../lib/TaskDomain';
 ﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Editor, EditorContent, useEditor } from '@tiptap/react';
@@ -35,6 +36,7 @@ interface TaskModalProps {
   projects: Project[];
   categories: Category[];
   onSave: (t: Task) => void;
+  onComplete?: (t: Task) => void;
   onDelete: (id: ID) => void;
   onCreateSuggestion?: (suggestion: TaskSuggestionDraft) => void;
   onDuplicate?: (() => void) | null;
@@ -382,6 +384,7 @@ export function TaskModal({
   projects,
   categories,
   onSave,
+  onComplete,
   onDelete,
   onCreateSuggestion,
   onDuplicate,
@@ -543,7 +546,7 @@ export function TaskModal({
     }, 0);
   };
 
-  const executeSave = () => {
+  const executeSave = (complete = false) => {
     const f = { ...task };
     let rawTitle = smart ? smart.cleanText : f.title;
 
@@ -583,7 +586,7 @@ export function TaskModal({
       f.deadline = smart.date;
       f.time = smart.time;
     }
-    if (f.title.trim()) finishWithMotion(() => onSave(f));
+    if (f.title.trim()) finishWithMotion(() => complete && onComplete ? onComplete(f) : onSave(f));
   };
 
   const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -2140,7 +2143,7 @@ export function TaskModal({
                 )}
                 <Btn variant="ghost" className="fk-modal-icon-danger" onClick={() => finishWithMotion(() => onDelete(task.id))} style={UI.settings.deleteButton} title="Удалить задачу"><Icon name="trash" size={16}/></Btn>
               </div>
-              <div style={UI.modal.actions()}><Btn variant="subtle" onClick={handleSafeClose}>Отмена</Btn><Btn variant="primary" onClick={executeSave}>{isNew ? 'Создать' : 'Сохранить'}</Btn></div></>
+              <div style={UI.modal.actions()}>{!isNew && onComplete && !isDoneTask(task, projects) && <Btn variant="subtle" onClick={() => executeSave(true)}>Завершить</Btn>}<Btn variant="subtle" onClick={handleSafeClose}>Отмена</Btn><Btn variant="primary" onClick={() => executeSave()}>{isNew ? 'Создать' : 'Сохранить'}</Btn></div></>
           )}
         </div>
 

@@ -49,6 +49,17 @@ export const loadAppData = async (): Promise<AppData> => {
   return defaults;
 };
 
-export const persistAppData = async (data: AppData): Promise<void> => {
-  await setStoredData(data);
+let pendingSave: Promise<void> = Promise.resolve();
+export const persistAppData = (data: AppData): Promise<void> => {
+  const nextSave = pendingSave.catch(() => {}).then(() => setStoredData(data));
+  pendingSave = nextSave;
+  return nextSave;
+};
+
+export const readViewPreference = (key: string): string | null => {
+  try { return localStorage.getItem(key); } catch { return null; }
+};
+
+export const writeViewPreference = (key: string, value: string): void => {
+  try { localStorage.setItem(key, value); } catch { /* Навигация работает и без localStorage. */ }
 };

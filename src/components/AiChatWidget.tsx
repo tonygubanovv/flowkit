@@ -13,6 +13,7 @@ interface AiChatWidgetProps {
   onSave: (session: AiChatSession) => void;
   onSelectSession: (id: string) => void;
   onNewSession: () => void;
+  onConfigure: () => void;
   activeView: string;
   onClose: () => void;
   isMobile?: boolean;
@@ -47,7 +48,7 @@ const detectMention = (value: string, cursor: number): MentionState | null => {
   return { query: query.toLowerCase(), start: cursor - query.length - 1, end: cursor };
 };
 
-export function AiChatWidget({ data, session, onSave, onSelectSession, onNewSession, activeView, onClose, isMobile }: AiChatWidgetProps) {
+export function AiChatWidget({ data, session, onSave, onSelectSession, onNewSession, onConfigure, activeView, onClose, isMobile }: AiChatWidgetProps) {
   const [messages, setMessages] = useState<ChatItem[]>(session.messages);
   const [draft, setDraft] = useState(session.draft);
   const [error, setError] = useState('');
@@ -234,7 +235,11 @@ export function AiChatWidget({ data, session, onSave, onSelectSession, onNewSess
           <div style={styles.empty}>
             <div style={styles.title}>С чего начнём?</div>
             <div>Помогу выбрать главное, найти блокеры и спланировать неделю.</div>
-            <div style={styles.exampleGrid}>
+            {!aiSettings.apiKey && <>
+              <div>Подключите AI в настройках, чтобы обсуждать задачи. Черновик можно написать уже сейчас.</div>
+              <Btn variant="subtle" onClick={onConfigure}>Настроить AI</Btn>
+            </>}
+            {aiSettings.apiKey && <div style={styles.exampleGrid}>
               {EXAMPLES.map((example) => (
                 <button
                   key={example}
@@ -247,7 +252,7 @@ export function AiChatWidget({ data, session, onSave, onSelectSession, onNewSess
                   {example}
                 </button>
               ))}
-            </div>
+            </div>}
             <div style={styles.hint}>Напиши @, чтобы выбрать задачу — вопрос уйдёт в AI только по ней.</div>
           </div>
         )}
@@ -365,7 +370,7 @@ export function AiChatWidget({ data, session, onSave, onSelectSession, onNewSess
           </div>
         )}
 
-        {!aiSettings.apiKey && <div style={styles.status('danger')}>В настройках не указан API-ключ Neurly.</div>}
+        {!aiSettings.apiKey && <div style={styles.status()}>Отправка станет доступна после подключения AI.</div>}
         {error && <div role="alert" style={styles.status('danger')}>{error}</div>}
         {aiSettings.apiKey && <div style={styles.status()}>Ctrl / ⌘ + Enter — отправить · @ — выбрать задачу</div>}
       </form>

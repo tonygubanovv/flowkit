@@ -1,15 +1,17 @@
+import { AiActionsMenu } from './components/AiActionsMenu';
+import { AppStatus, StorageNotice } from './components/AppStatus';
 import { createChatSession, saveChatSession } from './lib/ChatHistory';
 ﻿import React, { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { AppData, Category, ID, Note, Project, Task } from './types/Schemas';
 import { DEFAULT_ACCENT, updateTheme } from './styles/Theme';
-import { DEFAULT_BACKGROUND_PRESET, GLOBAL_STYLES, UI, applyBackgroundPreset, normalizeBackgroundPreset } from './styles/Styles';
+import { DEFAULT_BACKGROUND_PRESET, UI, applyBackgroundPreset, normalizeBackgroundPreset } from './styles/Styles';
 import { buildHK, genId, todayStr, playDoneSound } from './lib/Helpers';
 import { TaskSuggestionDraft } from './lib/AiTaskSuggestions';
 
-import { loadAppData, persistAppData, sanitizeAppDataForExport } from './data/AppStorage';
+import { loadAppData, persistAppData, sanitizeAppDataForExport, readViewPreference, writeViewPreference } from './data/AppStorage';
 import { makeDefaultData, normalizeImportedData } from './data/DefaultData';
-import { getDeletedTaskMessage } from './lib/TaskDomain';
+import { getDeletedTaskMessage, isDoneTask } from './lib/TaskDomain';
 import { DEFAULT_TASK_PRIORITY, normalizeTaskPriority, TASK_PRIORITY_OPTIONS } from './lib/TaskPriority';
 import { getVisibleTasks } from './lib/TaskFilters';
 import {
@@ -40,6 +42,7 @@ import { AiChatWidget } from './components/AiChatWidget';
 
 const STORAGE_VIEW_KEY = 'flowkit-view';
 const STORAGE_SIDEBAR_KEY = 'flowkit-sidebar';
+const STORAGE_KANBAN_KEY = 'flowkit-last-project';
 
 const GLOBAL_VIEWS = ['today', 'notes', 'analytics', 'calendar'];
 
@@ -250,10 +253,14 @@ const ProjectGearMenu = ({
 export default function App() {
   const [data, setData] = useState<AppData>(makeDefaultData());
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [saveError, setSaveError] = useState(false);
+  const [saveAttempt, setSaveAttempt] = useState(0);
   const [themeVersion, setThemeVersion] = useState(0);
 
-  const [activeView, setActiveView] = useState(() => localStorage.getItem(STORAGE_VIEW_KEY) || 'today');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem(STORAGE_SIDEBAR_KEY) === 'true');
+  const [activeView, setActiveView] = useState(() => readViewPreference(STORAGE_VIEW_KEY) || 'today');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readViewPreference(STORAGE_SIDEBAR_KEY) === 'true');
 
   const [projectModal, setProjectModal] = useState<Project | null>(null);
   const [taskModal, setTaskModal] = useState<{ task: Task; isNew: boolean } | null>(null);
@@ -263,6 +270,7 @@ export default function App() {
   const [noteContextMenu, setNoteContextMenu] = useState<NoteContextMenu | null>(null);
 
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<'profile' | 'ai'>('profile');
   const [showSearch, setShowSearch] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showDone, setShowDone] = useState(false);
@@ -270,21 +278,24 @@ export default function App() {
   const [showTaskSuggestions, setShowTaskSuggestions] = useState(false);
   const [showAiChat, setShowAiChat] = useState(false);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
-  const [newChat] = useState(createChatSession);
+  const [newChat, setNewChat] = useState(createChatSession);
 
   const [filterProjectId, setFilterProjectId] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
 
-  const isMobile = useMobile();
+  const isMobile = false;
   const isChatOverlay = useMobile(1100);
 
   const activeProject = useMemo(() => {
     return data.projects.find((project) => project.id === activeView);
   }, [data.projects, activeView]);
 
-  const lastKanbanProjectId = useRef<string | null>(null);
+  const lastKanbanProjectId = useRef<string | null>(readViewPreference(STORAGE_KANBAN_KEY));
   useEffect(() => {
-    if (activeProject) lastKanbanProjectId.current = activeProject.id;
+    if (activeProject) {
+      lastKanbanProjectId.current = activeProject.id;
+      writeViewPreference(STORAGE_KANBAN_KEY, activeProject.id);
+    }
   }, [activeProject?.id]);
 
   const navigateFromSidebar = (view: string) => {
@@ -301,54 +312,58 @@ export default function App() {
   const isCalendarView = activeView === 'calendar';
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_VIEW_KEY, activeView);
+    writeViewPreference(STORAGE_VIEW_KEY, activeView);
   }, [activeView]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_SIDEBAR_KEY, String(sidebarCollapsed));
+    writeViewPreference(STORAGE_SIDEBAR_KEY, String(sidebarCollapsed));
   }, [sidebarCollapsed]);
 
   const themeAccent = data.profile?.accentColor || DEFAULT_ACCENT;
   const backgroundPreset = normalizeBackgroundPreset(data.profile?.backgroundPreset || DEFAULT_BACKGROUND_PRESET);
 
   useLayoutEffect(() => {
+    if (isLoading) return;
     updateTheme(themeAccent);
     applyBackgroundPreset(backgroundPreset);
     setThemeVersion((current) => current + 1);
-  }, [backgroundPreset, themeAccent]);
+  }, [backgroundPreset, themeAccent, isLoading]);
 
   useEffect(() => {
     let mounted = true;
 
     const loadData = async () => {
-      const storedData = await loadAppData();
-
-      if (!mounted) return;
-
-      setData(storedData);
-      setShowDone(storedData.profile?.showCompletedDefault || false);
-      setIsLoading(false);
+      setLoadError(false);
+      try {
+        const storedData = await loadAppData();
+        if (!mounted) return;
+        setData(storedData);
+        if (!GLOBAL_VIEWS.includes(activeView) && !storedData.projects.some((project) => project.id === activeView)) setActiveView('today');
+        setShowDone(storedData.profile?.showCompletedDefault || false);
+        setIsLoading(false);
+      } catch {
+        if (mounted) setLoadError(true);
+      }
     };
-
-    loadData();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    void loadData();
+    return () => { mounted = false; };
+  }, [loadAttempt]);
 
   useEffect(() => {
     if (isLoading) return;
-
-    persistAppData(data);
-  }, [data, isLoading]);
+    let current = true;
+    persistAppData(data).then(() => { if (current) setSaveError(false); })
+      .catch(() => { if (current) setSaveError(true); });
+    return () => { current = false; };
+  }, [data, isLoading, saveAttempt]);
 
   const openNewTask = useCallback(
     (columnId?: string, initialTitle = '') => {
-      const project = activeProject || data.projects[0];
+      const project = activeProject || data.projects.find((item) => item.id === filterProjectId) || data.projects[0];
       const firstColumnId = project?.columns[0]?.id;
 
-      if (!project || !firstColumnId) return;
+      if (!project) return;
+      if (!firstColumnId) { setProjectModal(project); return; }
 
       setTaskModal({
         isNew: true,
@@ -370,7 +385,7 @@ export default function App() {
         },
       });
     },
-    [activeProject, activeView, data.projects],
+    [activeProject, activeView, data.projects, filterProjectId],
   );
 
   useEffect(() => {
@@ -532,6 +547,7 @@ export default function App() {
 
   const addNewProject = useCallback((project: Project) => {
     setData((current) => addProject(current, project));
+    setActiveView(project.id);
   }, []);
 
   const reorderProjectIds = useCallback((fromId: ID, toId: ID) => {
@@ -674,25 +690,16 @@ export default function App() {
 
   const mainTitle = activeProject ? activeProject.name : titles[activeView] || '';
 
-  if (isLoading) {
-    return (
-      <div style={UI.app.loading}>
-        <Icon
-          name="sun"
-          size={36}
-          color={'var(--accent)'}
-          style={UI.app.loadingIcon}
-        />
-      </div>
-    );
-  }
+  if (loadError) return <AppStatus title="Не удалось открыть данные" onRetry={() => setLoadAttempt((attempt) => attempt + 1)}>
+    Данные не заменены и не удалены. Проверьте доступ к хранилищу браузера и повторите попытку.
+  </AppStatus>;
+  if (isLoading) return <AppStatus title="Загрузка FlowKit…" />;
 
   return (
     <div
       data-theme-version={themeVersion}
       style={UI.app.root}
     >
-      <style>{GLOBAL_STYLES}</style>
 
       {!isMobile && (
         <Sidebar
@@ -704,7 +711,7 @@ export default function App() {
           onDelProject={deleteProject}
           onRenameProject={renameProject}
           onProjectColorChange={updateProjectColor}
-          onSettings={() => setShowSettings(true)}
+          onSettings={() => { setSettingsTab('profile'); setShowSettings(true); }}
           onSearch={() => setShowSearch(true)}
           isMobile={false}
           onClose={() => {}}
@@ -714,6 +721,7 @@ export default function App() {
       )}
 
       <div style={UI.app.content(isMobile)}>
+        {saveError && <StorageNotice onRetry={() => setSaveAttempt((attempt) => attempt + 1)} onExport={exportData} />}
         <header style={UI.app.header(isMobile)}>
           <div style={UI.app.titleArea}>
             {isMobile && (
@@ -749,15 +757,6 @@ export default function App() {
           </div>
 
           <div style={UI.app.toolbar}>
-            <button
-              type="button"
-              onClick={() => setShowSearch(true)}
-              className="fk-hover-subtle fk-hover-border-accent"
-              style={UI.app.headerIconButton()}
-            >
-              <Icon name="search" size={20} />
-            </button>
-
             {!isNotesView && !isAnalyticsView && (
               <FilterMenu
                 filters={filters}
@@ -767,29 +766,12 @@ export default function App() {
               />
             )}
 
-            {!isNotesView && !isAnalyticsView && (
-              <Btn
-                variant="subtle"
-                onClick={() => setShowTaskSuggestions(true)}
-                style={UI.app.aiAction}
-              >
-                <Icon name="spark" size={18} />
-                {!isMobile && 'AI'}
-              </Btn>
-            )}
-
-            <Btn
-              variant="subtle"
-              onClick={() => setShowAiChat((current) => !current)}
-              style={UI.app.aiAction}
-              title="AI-чат по задачам"
-            >
-              <Icon name="message" size={18} />
-              {!isMobile && 'Чат'}
-            </Btn>
+            <AiActionsMenu onChat={() => setShowAiChat(true)} onSuggest={() => setShowTaskSuggestions(true)} canSuggest={!isNotesView && !isAnalyticsView} />
 
             <Btn
               variant="primary"
+              disabled={!isNotesView && data.projects.length === 0}
+              title={!isNotesView && data.projects.length === 0 ? 'Сначала создайте проект' : undefined}
               onClick={isNotesView ? openNewNote : () => openNewTask()}
               style={UI.app.primaryAction}
             >
@@ -799,8 +781,8 @@ export default function App() {
           </div>
         </header>
 
-        <main key={activeView} className="fk-view-transition" style={UI.app.main}>
-          <Suspense fallback={null}>
+        <main key={activeView} style={UI.app.main}>
+          <Suspense fallback={<AppStatus title="Загрузка раздела…" embedded />}>
             {isAnalyticsView ? (
               <AnalyticsView
                 tasks={data.tasks}
@@ -871,6 +853,14 @@ export default function App() {
               playTaskSaveSound();
               setTaskModal(null);
             }}
+            onComplete={(task) => {
+              setData((current) => {
+                const updated = upsertTask(current, task);
+                const saved = updated.tasks.find((item) => item.id === task.id);
+                return saved && !isDoneTask(saved, updated.projects) ? toggleTaskInData(updated, task.id) : updated;
+              });
+              setTaskModal(null);
+            }}
             onDelete={deleteTask}
             onCreateSuggestion={createTaskFromSuggestion}
             onDuplicate={() => duplicateTaskDraft(taskModal.task)}
@@ -911,6 +901,7 @@ export default function App() {
         {showSettings && (
           <SettingsModal
             data={data}
+            initialTab={settingsTab}
             onSave={({ categories, profile, hotkeys }: { categories: Category[]; profile: AppData['profile']; hotkeys: AppData['hotkeys'] }) => {
               const nextProfile = {
                 ...profile,
@@ -960,12 +951,15 @@ export default function App() {
         <AiChatWidget
           data={data}
           key={activeChatId ?? data.aiChats?.[0]?.id ?? newChat.id}
-          session={(data.aiChats ?? []).find((chat) => chat.id === activeChatId) ?? data.aiChats?.[0] ?? newChat}
+          session={(data.aiChats ?? []).find((chat) => chat.id === activeChatId) ?? (activeChatId === newChat.id ? newChat : data.aiChats?.[0] ?? newChat)}
           onSave={(session) => setData((current) => saveChatSession(current, session))}
           onSelectSession={setActiveChatId}
+          onConfigure={() => { setSettingsTab('ai'); setShowSettings(true); }}
           onNewSession={() => {
+            const empty = data.aiChats?.find((chat) => !chat.messages.length && !chat.draft.trim() && !chat.contextTaskIds.length);
+            if (empty) { setActiveChatId(empty.id); return; }
             const session = createChatSession();
-            setData((current) => saveChatSession(current, session));
+            setNewChat(session);
             setActiveChatId(session.id);
           }}
           activeView={activeView}

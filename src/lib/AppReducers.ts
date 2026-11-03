@@ -1,3 +1,4 @@
+import { prepareNewProject } from './ProjectDomain';
 import { AppData, ID, Note, Project, Task, TaskHistoryEvent } from '../types/Schemas';
 import { todayStr } from './Helpers';
 import { compareTasksBySort, TaskSortBy } from './TaskFilters';
@@ -361,7 +362,7 @@ export const updateProjectColorInData = (current: AppData, id: ID, color: string
 
 export const addProject = (current: AppData, project: Project): AppData => ({
   ...current,
-  projects: [...current.projects, project],
+  projects: [...current.projects, prepareNewProject(project)],
   projectsOrder: [...current.projectsOrder, project.id],
 });
 

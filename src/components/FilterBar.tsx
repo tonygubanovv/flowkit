@@ -56,6 +56,8 @@ export function FilterMenu({
     <div ref={ref} style={UI.filter.wrap}>
       <button
         type="button"
+        aria-label="Фильтры задач"
+        aria-expanded={show}
         onClick={() => setShow(!show)}
         className="fk-hover-subtle fk-hover-border-accent"
         style={UI.app.headerIconButton(show)}

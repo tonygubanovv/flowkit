@@ -4,39 +4,35 @@ import { BACKGROUND_PRESETS, DEFAULT_BACKGROUND_PRESET, UI, normalizeBackgroundP
 import { genId, relDate, dateStatus, extractSmartDate, buildHK, formatHK } from '../../lib/Helpers';
 import { PALETTE, AVATAR_EMOJIS } from '../../lib/Constants';
 import { typographize } from '../../lib/Typograf';
-import { Task, Project, Category, Comment, Note, Column, Hotkeys, ID, Profile } from '../../types/Schemas';
+import { AppData, Task, Project, Category, Comment, Note, Column, Hotkeys, ID, Profile } from '../../types/Schemas';
 import { Btn, Icon, SI, FillPicker } from '../ui/UiExports';
 import { RichEditor } from '../RichEditor';
 import { CustomDropdown, DateDropdown, fontFamily, innerDesk, innerMob, modalHoverBg, modalInnerBg, modalSurfaceBg, noteInnerDesk, wrapDesk, wrapMob } from './Shared';
 interface SettingsModalProps {
-  data: any;
-  onSave: (val: any) => void;
+  data: AppData;
+  onSave: (val: Pick<AppData, 'categories' | 'profile' | 'hotkeys'>) => void;
   onClose: () => void;
   onExport: () => void;
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
   isMobile?: boolean;
+  initialTab?: 'profile' | 'ai';
 }
 
-export function SettingsModal({ data, onSave, onClose, onExport, onImport, isMobile }: SettingsModalProps) {
-  const [tab, setTab] = useState('profile');
+export function SettingsModal({ data, onSave, onClose, onExport, onImport, isMobile, initialTab = 'profile' }: SettingsModalProps) {
+  const [tab, setTab] = useState<string>(initialTab);
   const [cats, setCats] = useState<Category[]>(data.categories.map((c: Category) => ({ ...c })));
-  const [profile, setProfile] = useState<Profile>({
-    name: '',
-    avatarEmoji: '🚀',
-    accentColor: DEFAULT_ACCENT,
-    showCompletedDefault: false,
-    weekStartsMonday: true,
-    archiveDays: 7,
-    aiApiKey: '',
-    aiModel: '',
-    aiUserInstructions: '',
-    aiTaskContext: '',
-    ...(data.profile || {}),
-    backgroundPreset: normalizeBackgroundPreset(data.profile?.backgroundPreset || DEFAULT_BACKGROUND_PRESET),
+  const [profile, setProfile] = useState<Profile>({ ...data.profile,
+    backgroundPreset: normalizeBackgroundPreset(data.profile.backgroundPreset || DEFAULT_BACKGROUND_PRESET),
   });
-  const [hotkeys, setHotkeys] = useState<Hotkeys>({ newTask:'KeyN', today:'KeyT', allTasks:'KeyA', search:'Slash', ...(data.hotkeys || {}) });
+  const [hotkeys, setHotkeys] = useState<Hotkeys>({ ...data.hotkeys });
   const [catN, setCatN] = useState('');
   const [recordingKey, setRecordingKey] = useState<keyof Hotkeys | null>(null);
+  const [initialSnapshot] = useState(() => JSON.stringify({ cats, profile, hotkeys }));
+  const [confirmClose, setConfirmClose] = useState(false);
+  const handleClose = () => {
+    if (JSON.stringify({ cats, profile, hotkeys }) !== initialSnapshot) setConfirmClose(true);
+    else onClose();
+  };
   const accentPreview = isValidFill(profile.accentColor) ? profile.accentColor.trim() : DEFAULT_ACCENT;
   const canSave = isValidFill(profile.accentColor);
 
@@ -55,14 +51,14 @@ export function SettingsModal({ data, onSave, onClose, onExport, onImport, isMob
   }, [recordingKey]);
 
   return (
-    <div style={isMobile ? wrapMob : wrapDesk} onMouseDown={!isMobile ? e => e.target === e.currentTarget && onClose() : undefined}>
+    <div style={isMobile ? wrapMob : wrapDesk} onMouseDown={!isMobile ? e => e.target === e.currentTarget && handleClose() : undefined}>
       <div style={UI.settings.shell(isMobile ? innerMob : innerDesk, !!isMobile)} onMouseDown={e => e.stopPropagation()}>
         <div style={UI.settings.header}>
           <div style={UI.settings.headerRow}>
             <span style={UI.settings.title}>
               <span style={UI.settings.avatarText}>{profile.avatarEmoji}</span> Настройки
             </span>
-            <button onClick={onClose} className="fk-modal-close" style={UI.modal.closeButton}><Icon name="x" size={18}/></button>
+            <button onClick={handleClose} className="fk-modal-close" style={UI.modal.closeButton}><Icon name="x" size={18}/></button>
           </div>
           <div style={UI.settings.tabBar}>
       {/* Локализованные вкладки */}
@@ -213,7 +209,11 @@ export function SettingsModal({ data, onSave, onClose, onExport, onImport, isMob
         </div>
 
         <div style={UI.settings.footer}>
-          <Btn variant="subtle" onClick={onClose}>Отмена</Btn>
+          {confirmClose ? <>
+            <span style={UI.modal.confirmText}>Закрыть без сохранения?</span>
+            <Btn variant="subtle" onClick={() => setConfirmClose(false)}>Назад</Btn>
+            <Btn variant="danger" onClick={onClose}>Закрыть</Btn>
+          </> : <Btn variant="subtle" onClick={handleClose}>Отмена</Btn>}
           <Btn
             variant="primary"
             disabled={!canSave}

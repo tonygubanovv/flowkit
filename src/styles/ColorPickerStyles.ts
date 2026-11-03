@@ -8,7 +8,7 @@ export const COLOR_PICKER_STYLES = {
   swatch: (color: string, selected: boolean): CSSProperties => ({
     width: '100%', minWidth: 0, height: 28, padding: 0, display: 'grid', placeItems: 'center',
     background: color, color: readableTextOn(color), borderRadius: 6,
-    border: `2px solid ${selected ? T.text : 'transparent'}`, cursor: 'pointer',
+    border: 'none', cursor: 'pointer',
   }),
   label: { color: T.muted, fontSize: 11, fontWeight: 500 } as CSSProperties,
   inputRow: { display: 'grid', gridTemplateColumns: '28px minmax(0, 1fr)', gap: 8, alignItems: 'center' } as CSSProperties,

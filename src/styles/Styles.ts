@@ -5429,7 +5429,7 @@ export const UI = {
 
 
 export const GLOBAL_STYLES = `
-        @import url('https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap');
+
 
         @keyframes fk-page-ambient {
           0% {
