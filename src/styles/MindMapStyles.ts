@@ -65,4 +65,11 @@ export const MIND_MAP_CSS = `
 .fk-mind-map me-tpc .tags { color: var(--muted); font-size: 10px; }
 .fk-mind-map me-tpc .tags span { color: var(--text2); background: var(--card-hov); border: none; border-radius: 4px; }
 .fk-mind-map me-tpc a { color: var(--text2); }
+.fk-mind-map .map-container me-parent me-epd,
+.fk-mind-map .map-container me-parent me-epd.minus { opacity: 1; border-radius: 50%; background-image: none !important; background-color: var(--card-act); border: 1px solid var(--border-strong); }
+.fk-mind-map .map-container me-parent me-epd.minus { background-color: var(--card); border-color: var(--border); }
+.fk-mind-map .map-container me-parent me-epd::before { content: '+'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; line-height: 1; color: var(--text); }
+.fk-mind-map .map-container me-parent me-epd.minus::before { content: '−'; color: var(--text2); }
+.fk-mind-map .map-container me-parent me-epd:hover,
+.fk-mind-map .map-container me-parent me-epd.minus:hover { opacity: 1; background-color: var(--card-hov); border-color: var(--border-strong); }
 `;

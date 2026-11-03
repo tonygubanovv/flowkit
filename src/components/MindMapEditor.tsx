@@ -3,7 +3,7 @@ import MindElixir, { MindElixirData, NodeObj, Topic } from 'mind-elixir';
 import { ru } from 'mind-elixir/i18n';
 import 'mind-elixir/style.css';
 import { MindMap, MindMapNodeMeta, Note, Project, Task } from '../types/Schemas';
-import { getMindMapMeta, projectMindMapData } from '../lib/MindMaps';
+import { getMindMapMeta, projectMindMapData, walkMindMap } from '../lib/MindMaps';
 import { MIND_MAP_CSS, MIND_MAP_STYLES as S, MIND_MAP_THEME } from '../styles/MindMapStyles';
 
 export interface MindMapEditorHandle {
@@ -13,7 +13,7 @@ export interface MindMapEditorHandle {
   redo: () => void;
   center: () => void;
   fit: () => void;
-  zoom: (delta: number) => void;
+  setAllExpanded: (expanded: boolean) => void;
 }
 
 export type MindMapNodeAction = 'task' | 'note' | 'link' | 'files';
@@ -27,7 +27,10 @@ interface Props {
   onSelect: (node: NodeObj | null) => void;
   onNodeAction: (node: NodeObj, action: MindMapNodeAction, point: { x: number; y: number }) => void;
   onOpenEntity: (entity: NonNullable<MindMapNodeMeta['entity']>) => void;
+  onCanvasContext: (point: { x: number; y: number }) => void;
 }
+
+const COLLAPSE_ITEM = 'Свернуть ветвь';
 
 const syncEntities = (mind: MindElixir, props: Props) => {
   const ids = mind.currentNodes.map((element) => element.nodeObj.id);
@@ -43,6 +46,7 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
   const pan = useRef<{ id: number; x: number; y: number } | null>(null);
   const latest = useRef(props);
   latest.current = props;
+  const saveRef = useRef<() => void>(() => {});
   const [error, setError] = useState(false);
   const [scale, setScale] = useState(100);
 
@@ -61,9 +65,15 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
     redo: () => { instance.current?.redo(); },
     center: () => { instance.current?.toCenter(); },
     fit: () => { instance.current?.scaleFit(); },
-    zoom: (delta) => {
+    setAllExpanded: (expanded) => {
       const mind = instance.current;
-      if (mind) mind.scale(Math.max(.2, Math.min(2, mind.scaleVal + delta)));
+      if (!mind) return;
+      mind.nodeData.expanded = true;
+      mind.nodeData.children?.forEach((child) => walkMindMap(child, (node) => {
+        if (node.children?.length) node.expanded = expanded;
+      }));
+      mind.refresh();
+      saveRef.current();
     },
   }), []);
 
@@ -85,6 +95,12 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
       el: host.current, theme: MIND_MAP_THEME, direction: 2, newTopicName: 'Новая мысль',
       contextMenu: { locale: { ...ru, addChild: 'Добавить ветвь', addSibling: 'Добавить соседний узел',
         link: 'Соединить узлы', linkBidirectional: 'Двусторонняя связь', summary: 'Объединить скобкой', clickTips: 'Выберите второй узел' }, focus: false, link: true, extend: [
+        { name: COLLAPSE_ITEM, onclick: () => {
+          const topic = mind.currentNodes[0];
+          const menu = mind.container.querySelector<HTMLElement>('.context-menu');
+          if (menu) menu.hidden = true;
+          if (topic) mind.expandNode(topic);
+        } },
         { name: 'Связать задачу', onclick: requestAction('task') },
         { name: 'Связать заметку', onclick: requestAction('note') },
         { name: 'Ссылка', onclick: requestAction('link') },
@@ -124,6 +140,30 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
       mind.bus.addListener('unselectNodes', () => latest.current.onSelect(null));
       mind.bus.addListener('scale', (value) => setScale(Math.round(value * 100)));
       mind.bus.addListener('updateArrowDelta', () => save(true));
+      saveRef.current = save;
+      mind.bus.addListener('showContextMenu', () => {
+        const node = mind.currentNodes[0]?.nodeObj || mind.nodeData;
+        const item = mind.container.querySelector<HTMLElement>(`[id="${COLLAPSE_ITEM}"]`);
+        if (!item?.children.length) return;
+        item.hidden = node.id === mind.nodeData.id || !node.children?.length;
+        item.children[0].textContent = node.expanded === false ? 'Раскрыть ветвь' : COLLAPSE_ITEM;
+      });
+      const wheel = (event: WheelEvent) => {
+        if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+          event.preventDefault();
+          mind.move(-event.deltaX, 0);
+          return;
+        }
+        const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? event.deltaY * 40
+          : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? event.deltaY * mind.container.clientHeight
+          : event.deltaY;
+        const step = Math.max(-mind.scaleSensitivity, Math.min(mind.scaleSensitivity, -(unit / 10) * mind.scaleSensitivity));
+        if (!step) return;
+        event.preventDefault();
+        mind.scale(mind.scaleVal + step, { x: event.clientX, y: event.clientY });
+      };
+      mind.container.addEventListener('wheel', wheel, { passive: false });
+      mind.disposable.push(() => mind.container.removeEventListener('wheel', wheel));
     } catch {
       setError(true);
     }
@@ -162,9 +202,20 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
       event.stopPropagation(); pan.current = null;
       event.currentTarget.releasePointerCapture(event.pointerId);
     }} onPointerCancelCapture={() => { pan.current = null; }} onClickCapture={(event) => {
-      const topic = event.target instanceof Element ? event.target.closest('me-tpc') as Topic | null : null;
       const mind = instance.current;
-      if (topic && mind && !mind.currentNodes.includes(topic) && !event.ctrlKey && !event.metaKey && !event.shiftKey) mind.selectNode(topic);
+      if (!mind || !(event.target instanceof Element)) return;
+      const dot = event.target.closest<HTMLElement>('me-epd');
+      if (dot) {
+        const topic = dot.parentElement?.querySelector<HTMLElement>('me-tpc') as Topic | null;
+        if (!topic) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.ctrlKey || event.metaKey) { mind.expandNodeAll(topic); saveRef.current(); }
+        else mind.expandNode(topic);
+        return;
+      }
+      const topic = event.target.closest('me-tpc') as Topic | null;
+      if (topic && !mind.currentNodes.includes(topic) && !event.ctrlKey && !event.metaKey && !event.shiftKey) mind.selectNode(topic);
     }} onDoubleClickCapture={(event) => {
       const topic = event.target instanceof Element ? event.target.closest('me-tpc') as Topic | null : null;
       const entity = topic && getMindMapMeta(topic.nodeObj).entity;
@@ -172,11 +223,18 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
       else if (topic) { event.stopPropagation(); event.preventDefault(); void instance.current?.beginEdit(topic); }
     }} onContextMenuCapture={(event) => {
       const mind = instance.current;
-      const target = event.target;
-      const topic = target instanceof Element ? target.closest<HTMLElement>('me-tpc') : null;
-      if (!mind || !topic) return;
+      if (!mind) return;
       event.preventDefault();
       event.stopPropagation();
+      const element = event.target instanceof Element ? event.target : null;
+      const topic = element?.closest<HTMLElement>('me-tpc')
+        ?? element?.closest<HTMLElement>('me-epd')?.parentElement?.querySelector<HTMLElement>('me-tpc') ?? null;
+      if (!topic) {
+        const menu = mind.container.querySelector<HTMLElement>('.context-menu');
+        if (menu) menu.hidden = true;
+        latest.current.onCanvasContext({ x: event.clientX, y: event.clientY });
+        return;
+      }
       mind.selectNode(topic as Topic);
       const menuEvent = new MouseEvent('contextmenu', { clientX: event.clientX, clientY: event.clientY });
       Object.defineProperty(menuEvent, 'target', { value: topic });

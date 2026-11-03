@@ -32,6 +32,7 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
   const [renaming, setRenaming] = useState(false);
   const [title, setTitle] = useState(map.title);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [canvasMenu, setCanvasMenu] = useState<{ x: number; y: number } | null>(null);
   const usedBytes = useMemo(() => getMindMapBytes(map.data), [map.data]);
   const saveData = (data: MindElixirData) => props.onSave({ ...map, data, updatedAt: new Date().toISOString() });
   const project = props.projects.find((item) => item.id === map.projectId);
@@ -69,13 +70,18 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
           if (task) props.onOpenTask(task);
           if (note) props.onOpenNote(note);
         }}
-        onNodeAction={(selected, kind, point) => { setNode(selected); setAction({ kind, ...point }); }} />
+        onNodeAction={(selected, kind, point) => { setNode(selected); setAction({ kind, ...point }); }}
+        onCanvasContext={(point) => setCanvasMenu(point)} />
       <div style={S.canvasControls}>
-        <Btn size="sm" onClick={() => editor.current?.zoom(-.1)} title="Уменьшить масштаб">−</Btn>
-        <Btn size="sm" onClick={() => editor.current?.zoom(.1)} title="Увеличить масштаб">+</Btn>
         <Btn size="sm" onClick={() => editor.current?.fit()} title="Вписать доску в окно"><Icon name="maximize" size={14} /></Btn>
         <Btn size="sm" onClick={() => editor.current?.center()} title="По центру"><Icon name="grid" size={14} /></Btn>
       </div>
+      {canvasMenu && <ContextMenu x={canvasMenu.x} y={canvasMenu.y} onClose={() => setCanvasMenu(null)} items={[
+        { icon: 'plus', label: 'Добавить ветвь', onClick: () => editor.current?.addNode() },
+        { icon: 'expand', label: 'Раскрыть все ветви', onClick: () => editor.current?.setAllExpanded(true) },
+        { icon: 'collapse', label: 'Свернуть все ветви', onClick: () => editor.current?.setAllExpanded(false) },
+        '---', { icon: 'maximize', label: 'Вписать доску', onClick: () => editor.current?.fit() },
+      ]} />}
     </div>
     {node && action && <MindMapNodePanel key={`${node.id}-${action.kind}`} node={node} tasks={props.tasks} notes={props.notes} projects={props.projects} usedBytes={usedBytes}
       action={action.kind} point={action} onClose={() => setAction(null)}
