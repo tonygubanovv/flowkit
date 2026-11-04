@@ -13,12 +13,11 @@ import { MindMapObjects, MindMapTool } from './MindMapObjects';
 export interface MindMapEditorHandle {
   addNode: (node?: NodeObj) => void;
   patchNode: (id: string, patch: Partial<NodeObj>) => void;
-  placeObject: (tool: MindMapTool, clientX: number, clientY: number) => void;
-  toCanvas: (clientX: number, clientY: number) => { x: number; y: number };
   undo: () => void;
   redo: () => void;
   center: () => void;
   fit: () => void;
+  resetZoom: () => void;
   setAllExpanded: (expanded: boolean) => void;
   setColor: (ids: string[], color: string | null) => void;
   removeNodes: (ids: string[]) => void;
@@ -43,11 +42,11 @@ interface Props {
   onSelection: (nodes: NodeObj[]) => void;
   onSelectObject: (id: string | null) => void;
   onEditObject: (id: string | null) => void;
-  onObjectContext: (id: string, point: { x: number; y: number }) => void;
+  onObjectAction: (id: string) => void;
   onToolUse: () => void;
+  onScaleChange: (percent: number) => void;
   onNodeAction: (node: NodeObj, action: MindMapNodeAction, point: { x: number; y: number }) => void;
   onOpenEntity: (entity: NonNullable<MindMapNodeMeta['entity']>) => void;
-  onCanvasContext: (point: { x: number; y: number }) => void;
 }
 
 const COLLAPSE_ITEM = 'Свернуть ветвь';
@@ -103,6 +102,11 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
   const [scale, setScale] = useState(100);
   const [layerHost, setLayerHost] = useState<HTMLElement | null>(null);
 
+  const reportScale = (percent: number) => {
+    setScale(percent);
+    latest.current.onScaleChange(percent);
+  };
+
   const placeObject = (tool: MindMapTool, clientX: number, clientY: number) => {
     const mind = instance.current;
     if (!mind) return;
@@ -114,11 +118,6 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
 
   useImperativeHandle(ref, () => ({
     addNode: (node) => { void instance.current?.addChild(undefined, node); },
-    placeObject: (tool, clientX, clientY) => placeObject(tool, clientX, clientY),
-    toCanvas: (clientX, clientY) => {
-      const mind = instance.current;
-      return mind ? canvasPoint(mind, clientX, clientY) : { x: 0, y: 0 };
-    },
     patchNode: (id, patch) => {
       const mind = instance.current;
       if (!mind) return;
@@ -131,7 +130,18 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
     undo: () => { instance.current?.undo(); },
     redo: () => { instance.current?.redo(); },
     center: () => { instance.current?.toCenter(); },
-    fit: () => { instance.current?.scaleFit(); },
+    fit: () => {
+      const mind = instance.current;
+      if (!mind) return;
+      mind.scaleFit();
+      reportScale(Math.round(mind.scaleVal * 100));
+    },
+    resetZoom: () => {
+      const mind = instance.current;
+      if (!mind) return;
+      mind.scale(1);
+      reportScale(100);
+    },
     setAllExpanded: (expanded) => {
       const mind = instance.current;
       if (!mind) return;
@@ -277,7 +287,7 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
       mind.bus.addListener('selectNodes', () => emitSelection(mind, latest.current));
       mind.bus.addListener('selectNewNode', () => emitSelection(mind, latest.current));
       mind.bus.addListener('unselectNodes', () => emitSelection(mind, latest.current));
-      mind.bus.addListener('scale', (value) => setScale(Math.round(value * 100)));
+      mind.bus.addListener('scale', (value) => reportScale(Math.round(value * 100)));
       mind.bus.addListener('updateArrowDelta', () => save(true));
       saveRef.current = save;
       mind.bus.addListener('showContextMenu', () => {
@@ -358,7 +368,6 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
       if (!topic) {
         const menu = mind.container.querySelector<HTMLElement>('.context-menu');
         if (menu) menu.hidden = true;
-        latest.current.onCanvasContext({ x: event.clientX, y: event.clientY });
         return;
       }
       if (!topic.classList.contains('selected')) mind.selectNode(topic as Topic);
@@ -368,9 +377,8 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
     }} />
     {layerHost && createPortal(
       <MindMapObjects objects={props.objects} scale={scale / 100} selectedId={props.selectedObjectId} editingId={props.editingObjectId}
-        onSelect={selectObject} onEdit={props.onEditObject} onCommit={props.onObjectsChange} onObjectContext={props.onObjectContext} />,
+        onSelect={selectObject} onEdit={props.onEditObject} onCommit={props.onObjectsChange} onObjectAction={props.onObjectAction} />,
       layerHost)}
-    {error ? <div role="alert" style={S.empty}>Не удалось открыть карту. Данные сохранены — выберите другую карту или обновите страницу.</div> :
-      <div style={S.help}><span /><span>{scale}%</span></div>}
+    {error ? <div role="alert" style={S.empty}>Не удалось открыть карту. Данные сохранены — выберите другую карту или обновите страницу.</div> : null}
   </div>;
 });

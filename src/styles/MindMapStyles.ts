@@ -52,13 +52,13 @@ export const MIND_MAP_STYLES = {
   title: UI.control.input({ flex: 1, minWidth: 80, width: 'auto', padding: '4px 0', background: 'transparent', border: 'none', fontSize: 14, fontWeight: 600 }),
   row: { display: 'flex', alignItems: 'center', gap: 8 } as CSSProperties,
   canvas: { position: 'relative', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' } as CSSProperties,
-  canvasControls: { position: 'absolute', left: 16, bottom: 14, display: 'flex', alignItems: 'center', padding: 3, gap: 2, borderRadius: 8, background: 'var(--card)', border: '1px solid var(--border)' } as CSSProperties,
+  canvasControls: { position: 'absolute', right: 16, bottom: 14, display: 'flex', alignItems: 'center', gap: 2, padding: 3, borderRadius: 8, background: 'var(--card)', border: '1px solid var(--border)', zIndex: 12 } as CSSProperties,
+  zoom: { minWidth: 42, textAlign: 'center', color: 'var(--text2)', fontSize: 11, fontVariantNumeric: 'tabular-nums' } as CSSProperties,
   selectionBar: { position: 'absolute', left: '50%', bottom: 14, transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 9, padding: '5px 6px 5px 12px', borderRadius: 8, background: 'var(--card)', border: '1px solid var(--border)', zIndex: 12 } as CSSProperties,
   selectionCount: { color: 'var(--text2)', fontSize: 12, whiteSpace: 'nowrap' } as CSSProperties,
   divider: { width: 1, height: 20, background: 'var(--border)', flexShrink: 0 } as CSSProperties,
-  notice: { position: 'absolute', left: 16, bottom: 56, display: 'flex', alignItems: 'center', gap: 8, maxWidth: 380, padding: '7px 8px 7px 12px', borderRadius: 8, background: 'var(--card)', border: '1px solid var(--danger)', color: 'var(--text)', fontSize: 12 } as CSSProperties,
+  notice: { position: 'absolute', left: '50%', bottom: 56, transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 8, maxWidth: 380, padding: '7px 8px 7px 12px', borderRadius: 8, background: 'var(--card)', border: '1px solid var(--danger)', color: 'var(--text)', fontSize: 12, zIndex: 12 } as CSSProperties,
   host: { width: '100%', height: '100%', position: 'absolute', inset: 0 } as CSSProperties,
-  help: { position: 'absolute', bottom: 12, left: 16, right: 16, display: 'flex', justifyContent: 'space-between', pointerEvents: 'none', color: 'var(--muted)', fontSize: 11 } as CSSProperties,
   section: { display: 'flex', flexDirection: 'column', gap: 8 } as CSSProperties,
   linked: { display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 6, padding: 10, borderRadius: 8, background: 'var(--card)' } as CSSProperties,
   fullButton: { width: '100%', justifyContent: 'flex-start', textAlign: 'left', overflow: 'hidden' } as CSSProperties,
@@ -70,6 +70,8 @@ export const MIND_MAP_STYLES = {
   image: { width: '100%', maxHeight: 160, objectFit: 'contain', borderRadius: 8 } as CSSProperties,
   hidden: UI.layout.hidden,
   object: { position: 'absolute', cursor: 'grab', userSelect: 'none', touchAction: 'none' } as CSSProperties,
+  shapeHandle: { position: 'absolute', right: -5, bottom: -5, width: 10, height: 10, borderRadius: 3,
+    background: 'var(--card)', border: '1px solid var(--accent)', cursor: 'nwse-resize', touchAction: 'none' } as CSSProperties,
   objectEditor: { position: 'absolute', inset: 0, margin: 0, fontFamily: 'inherit', background: 'transparent',
     border: 'none', outline: 'none', color: 'transparent', caretColor: 'var(--text)', resize: 'none', overflow: 'hidden' } as CSSProperties,
   pinCard: { position: 'absolute', left: 34, top: 0, width: 'max-content', maxWidth: MIND_MAP_COMMENT_WIDTH,
@@ -77,13 +79,16 @@ export const MIND_MAP_STYLES = {
     boxShadow: '0 10px 28px rgba(0,0,0,.28)', fontSize: 12, lineHeight: '17px', color: 'var(--text)',
     whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' } as CSSProperties,
   toolGroup: { display: 'flex', alignItems: 'center', gap: 2, padding: 2, borderRadius: 8, border: '1px solid var(--border)' } as CSSProperties,
-  toolHint: { position: 'absolute', left: 16, bottom: 56, display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+  toolHint: { position: 'absolute', left: '50%', bottom: 14, transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
     borderRadius: 8, background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text2)', fontSize: 12, zIndex: 12 } as CSSProperties,
 };
 
 export const MIND_MAP_CSS = `
 .fk-mind-map .map-container, .fk-mind-map me-tpc, .fk-mind-map .context-menu,
 .fk-mind-map #input-box { font-family: var(--font-family) !important; }
+/* Точечная плоскость внутри .map-canvas: движок сам двигает и масштабирует этот слой, поэтому точки едут за доской. */
+.fk-mind-map .map-canvas::before { content: ''; position: absolute; left: -2000px; top: -2000px; right: -2000px; bottom: -2000px;
+  background-image: radial-gradient(circle, var(--border) 1px, transparent 1.5px); background-size: 22px 22px; pointer-events: none; }
 .fk-mind-map me-root me-tpc { font-size: 19px; font-weight: 600; }
 .fk-mind-map me-tpc { font-size: 13px; box-shadow: none; }
 .fk-mind-map me-tpc { cursor: pointer; }

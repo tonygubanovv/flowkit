@@ -86,6 +86,15 @@ export const buildObjectsSvg = (objects: MindMapObject[], origin: { x: number; y
       parts.push(object.shape === 'ellipse'
         ? `<ellipse cx="${x + w / 2}" cy="${y + h / 2}" rx="${w / 2}" ry="${h / 2}" fill="${fill}" stroke="${stroke}" stroke-width="1"/>`
         : `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="1"/>`);
+      if (object.text.trim()) {
+        const shapeSize = object.size || 15;
+        const shapeFont = `${shapeSize}px ${family}`;
+        const shapeLine = Math.round(shapeSize * 1.4);
+        const lines = wrapLines(object.text, w - 24, shapeFont);
+        const spans = lines.map((line, index) =>
+          `<tspan x="${x + w / 2}" dy="${index === 0 ? 0 : shapeLine}">${escapeXml(line)}</tspan>`).join('');
+        parts.push(`<text x="${x + w / 2}" y="${y + 9 + Math.round((shapeLine - shapeSize) / 2) + shapeSize}" text-anchor="middle" font-family="${escapeXml(family)}" font-size="${shapeSize}" fill="${textColor}">${spans}</text>`);
+      }
       grow(x, y, w, h);
       return;
     }

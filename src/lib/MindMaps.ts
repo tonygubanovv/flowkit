@@ -101,7 +101,7 @@ export const mindMapToMarkdown = (map: MindMap, tasks: Task[], notes: Note[], pr
     return `${'  '.repeat(depth)}${bullet}${text}${marks.length ? ` — ${marks.join(' · ')}` : ''}\n${(node.children || []).map((child) => line(child, depth + 1)).join('')}`;
   };
   const project = projects.find((item) => item.id === map.projectId);
-  const blocks = (map.objects || []).filter((item) => item.kind !== 'shape' && item.text.trim())
+  const blocks = (map.objects || []).filter((item) => item.text.trim())
     .map((item) => `- ${markdownCell(item.text)}`).join('\n');
   return `# ${markdownCell(map.title)}\n\n${project ? `Проект: ${markdownCell(project.name)}\n\n` : ''}${line(map.data.nodeData, 0)}${blocks ? `\n## Заметки на доске\n\n${blocks}\n` : ''}`;
 };

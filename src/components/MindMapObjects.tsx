@@ -6,7 +6,6 @@ import { MIND_MAP_STYLES as S } from '../styles/MindMapStyles';
 export type MindMapTool = 'select' | 'text' | 'rect' | 'ellipse' | 'comment';
 
 export const MIND_MAP_TOOLS: { id: MindMapTool; label: string; icon: string }[] = [
-  { id: 'select', label: 'Указатель', icon: 'pointer' },
   { id: 'text', label: 'Текст', icon: 'type' },
   { id: 'rect', label: 'Прямоугольник', icon: 'rect' },
   { id: 'ellipse', label: 'Эллипс', icon: 'ellipse' },
@@ -21,7 +20,7 @@ interface Props {
   onSelect: (id: string | null) => void;
   onEdit: (id: string | null) => void;
   onCommit: (objects: MindMapObject[]) => void;
-  onObjectContext: (id: string, point: { x: number; y: number }) => void;
+  onObjectAction: (id: string) => void;
 }
 
 const lineHeightOf = (object: MindMapObject): number => {
@@ -36,9 +35,14 @@ const typeStyle = (object: MindMapObject) => ({
   overflowWrap: 'anywhere' as const,
 });
 
+const SHAPE_MIN = { w: 60, h: 40 };
+const SHAPE_PADDING = '8px 12px';
+
 const objectStyle = (object: MindMapObject): React.CSSProperties => {
   if (object.kind === 'shape') {
-    return { width: object.w || 220, height: object.h || 130, borderRadius: object.shape === 'ellipse' ? '50%' : 10,
+    return { ...typeStyle(object), boxSizing: 'border-box', width: object.w || 220, height: object.h || 130,
+      padding: SHAPE_PADDING, textAlign: 'center', color: 'var(--text)',
+      borderRadius: object.shape === 'ellipse' ? '50%' : 10,
       background: object.color ? `color-mix(in srgb, ${object.color} 14%, var(--card-act))` : 'var(--card-act)',
       border: `1px solid ${object.color || 'var(--border-strong)'}` };
   }
@@ -51,9 +55,10 @@ const objectStyle = (object: MindMapObject): React.CSSProperties => {
 };
 
 const editorStyle = (object: MindMapObject): React.CSSProperties => ({
-  ...S.objectEditor, ...typeStyle(object),
+  ...S.objectEditor, ...typeStyle(object), boxSizing: 'border-box',
   caretColor: object.color || 'var(--text)',
-  padding: object.kind === 'comment' ? 0 : '2px 0',
+  textAlign: object.kind === 'shape' ? 'center' : undefined,
+  padding: object.kind === 'comment' ? 0 : object.kind === 'shape' ? SHAPE_PADDING : '2px 0',
 });
 
 export function MindMapObjects(props: Props) {
@@ -61,6 +66,7 @@ export function MindMapObjects(props: Props) {
   const [editText, setEditText] = useState('');
   const root = useRef<HTMLDivElement>(null);
   const drag = useRef<{ id: string; startX: number; startY: number; x: number; y: number } | null>(null);
+  const resize = useRef<{ id: string; startX: number; startY: number; w: number; h: number } | null>(null);
   const draftRef = useRef<MindMapObject[]>(props.objects);
   const editTextRef = useRef('');
   const propsRef = useRef(props);
@@ -89,8 +95,9 @@ export function MindMapObjects(props: Props) {
     const id = propsRef.current.editingId;
     if (!id) return;
     const text = editTextRef.current;
+    const isShape = propsRef.current.objects.find((item) => item.id === id)?.kind === 'shape';
     const next = draftRef.current
-      .filter((item) => item.id !== id || text.trim())
+      .filter((item) => item.id !== id || isShape || text.trim())
       .map((item) => item.id === id ? { ...item, text } : item);
     commit(next);
     propsRef.current.onEdit(null);
@@ -119,7 +126,7 @@ export function MindMapObjects(props: Props) {
       if (target?.tagName === 'TEXTAREA') return;
       event.preventDefault();
       const id = target?.closest('[data-object-id]')?.getAttribute('data-object-id');
-      if (id) propsRef.current.onObjectContext(id, { x: event.clientX, y: event.clientY });
+      if (id) propsRef.current.onObjectAction(id);
     };
     // Клавиши не должны доходить до движка: он трактует Delete/Backspace/Enter как команды карты.
     const onKeyDown = (event: KeyboardEvent) => {
@@ -189,11 +196,34 @@ export function MindMapObjects(props: Props) {
     props.onEdit(object.id);
   };
 
+  const startResize = (event: React.PointerEvent<HTMLSpanElement>, object: MindMapObject) => {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    resize.current = { id: object.id, startX: event.clientX, startY: event.clientY, w: object.w || 220, h: object.h || 130 };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const moveResize = (event: React.PointerEvent<HTMLSpanElement>) => {
+    const active = resize.current;
+    if (!active) return;
+    const w = Math.max(SHAPE_MIN.w, Math.round(active.w + (event.clientX - active.startX) / props.scale));
+    const h = Math.max(SHAPE_MIN.h, Math.round(active.h + (event.clientY - active.startY) / props.scale));
+    const next = draftRef.current.map((item) => item.id === active.id ? { ...item, w, h } : item);
+    draftRef.current = next;
+    setDraft(next);
+  };
+
+  const endResize = (event: React.PointerEvent<HTMLSpanElement>) => {
+    if (!resize.current) return;
+    resize.current = null;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    commit(draftRef.current);
+  };
+
   return <div ref={root} className="fk-mind-layer">
     {draft.map((object) => {
       const selected = object.id === props.selectedId;
       const editing = object.id === props.editingId;
-      const editable = object.kind !== 'shape';
       const editor = editing ? <textarea className="fk-mind-editor" aria-label="Текст на доске" value={editText}
         ref={(element) => {
           if (!element) return;
@@ -234,20 +264,22 @@ export function MindMapObjects(props: Props) {
       if (editing) {
         return <div key={object.id} style={{ position: 'absolute', left: object.x, top: object.y,
           outline: '1px solid var(--accent)', outlineOffset: 2 }}>
-          <div style={{ ...objectStyle(object), minWidth: 8, minHeight: lineHeightOf(object) + 4 }}>{editText}</div>
+          <div style={{ ...objectStyle(object), ...(object.kind === 'shape' ? {} : { minWidth: 8, minHeight: lineHeightOf(object) + 4 }) }}>{editText}</div>
           {editor}
         </div>;
       }
       return <div key={object.id} className="fk-mind-object"
         data-object-id={object.id}
-        role={editable ? 'button' : undefined} tabIndex={-1}
-        aria-label={editable ? (object.text.slice(0, 80) || 'Пустой текст') : 'Фигура на доске'}
+        role="button" tabIndex={-1}
+        aria-label={object.text.slice(0, 80) || (object.kind === 'shape' ? 'Фигура на доске' : 'Пустой текст')}
         style={{ ...S.object, left: object.x, top: object.y, ...objectStyle(object), ...(selected ? { outline: '2px solid var(--accent)', outlineOffset: 2 } : {}) }}
         onPointerDown={(event) => startDrag(event, object)}
         onPointerMove={moveDrag}
         onPointerUp={endDrag}
-        onDoubleClick={(event) => { event.stopPropagation(); if (editable) beginEdit(object); }}>
+        onDoubleClick={(event) => { event.stopPropagation(); beginEdit(object); }}>
         {object.text}
+        {object.kind === 'shape' && selected && <span style={S.shapeHandle} title="Изменить размер" aria-label="Изменить размер фигуры"
+          onPointerDown={(event) => startResize(event, object)} onPointerMove={moveResize} onPointerUp={endResize} />}
       </div>;
     })}
   </div>;
