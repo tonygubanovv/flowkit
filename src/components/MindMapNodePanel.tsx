@@ -92,7 +92,7 @@ export function MindMapNodePanel({ node, tasks, notes, projects, usedBytes, onPa
   const results = picker === 'task' ? tasks.map((item) => ({ id: item.id, title: item.title })) : notes.map((item) => ({ id: item.id, title: item.title || 'Без названия' }));
   const matching = results.filter((item) => item.title.toLocaleLowerCase('ru').includes(query.toLocaleLowerCase('ru')));
 
-  return <div ref={panel} style={S.popup(point.x, point.y)} role="dialog" aria-label="Действия с узлом">
+  return <div ref={panel} style={action === 'color' ? S.colorPopup(point.x, point.y) : S.popup(point.x, point.y)} role="dialog" aria-label="Действия с узлом">
     <div style={S.row}><span style={S.truncate}>{node.topic}</span><span style={S.spacer} /><Btn size="sm" onClick={onClose} title="Закрыть действия узла"><Icon name="x" size={14} /></Btn></div>
     {picker && <div style={S.section}>
       {meta.entity ? <div style={S.linked}>

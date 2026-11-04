@@ -15,12 +15,28 @@ export interface MindMapNodeMeta {
   attachments?: MindMapAttachment[];
 }
 
+export type MindMapObjectKind = 'text' | 'shape' | 'comment';
+
+export interface MindMapObject {
+  id: ID;
+  kind: MindMapObjectKind;
+  x: number;
+  y: number;
+  w: number;
+  h?: number;
+  text: string;
+  shape?: 'rect' | 'ellipse';
+  color?: string;
+  size?: number;
+}
+
 export interface MindMap {
   id: ID;
   title: string;
   projectId: ID | null;
   updatedAt: string;
   data: MindElixirData;
+  objects?: MindMapObject[];
 }
 
 export interface Comment {

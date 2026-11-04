@@ -1,6 +1,6 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { MindElixirData, NodeObj } from 'mind-elixir';
-import { MindMap, Note, Project, Task } from '../types/Schemas';
+import { MindMap, MindMapObject, Note, Project, Task } from '../types/Schemas';
 import { getMindMapBytes, getMindMapMeta, mindMapToMarkdown, walkMindMap } from '../lib/MindMaps';
 import { genId } from '../lib/Helpers';
 import { isDoneTask } from '../lib/TaskDomain';
@@ -9,6 +9,7 @@ import { Btn, ContextMenu, Icon } from '../components/ui/UiExports';
 import { CustomDropdown } from '../components/modals/Shared';
 import { MindMapEditor, MindMapEditorHandle, MindMapNodeAction } from '../components/MindMapEditor';
 import { MindMapNodePanel } from '../components/MindMapNodePanel';
+import { MIND_MAP_TOOLS, MindMapTool } from '../components/MindMapObjects';
 import { MIND_MAP_BRANCH_COLORS, MIND_MAP_STYLES as S } from '../styles/MindMapStyles';
 
 interface Props {
@@ -26,6 +27,9 @@ interface Props {
   onOpenNote: (note: Note) => void;
 }
 
+const OBJECT_LABELS: Record<MindMapObject['kind'], string> = { text: 'Текст', shape: 'Фигура', comment: 'Комментарий' };
+const NO_OBJECTS: MindMapObject[] = [];
+
 function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
   const editor = useRef<MindMapEditorHandle>(null);
   const [node, setNode] = useState<NodeObj | null>(null);
@@ -36,9 +40,24 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
   const [canvasMenu, setCanvasMenu] = useState<{ x: number; y: number } | null>(null);
   const [selection, setSelection] = useState<NodeObj[]>([]);
   const [notice, setNotice] = useState('');
+  const [tool, setTool] = useState<MindMapTool>('select');
+  const [objectId, setObjectId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const objects = map.objects || NO_OBJECTS;
+  const selectedObject = objects.find((item) => item.id === objectId) || null;
   const usedBytes = useMemo(() => getMindMapBytes(map.data), [map.data]);
   const saveData = (data: MindElixirData) => props.onSave({ ...map, data, updatedAt: new Date().toISOString() });
+  const saveObjects = (next: MindMapObject[]) => props.onSave({ ...map, objects: next, updatedAt: new Date().toISOString() });
   const project = props.projects.find((item) => item.id === map.projectId);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && tool !== 'select') setTool('select');
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [tool]);
+
   const importProject = () => {
     if (!project) return;
     const linkedIds = new Set<string>();
@@ -61,19 +80,29 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
         downloadMindMapFile(`${fileBase}.md`, new Blob([mindMapToMarkdown(map, props.tasks, props.notes, props.projects)], { type: 'text/markdown;charset=utf-8' }));
         return;
       }
-      const svg = editor.current?.exportSvg();
+      const svg = await editor.current?.exportSvg();
       if (!svg) throw new Error('Доска ещё не открылась.');
       downloadMindMapFile(`${fileBase}.${kind}`, kind === 'svg' ? await mindMapSvgBlob(svg) : await mindMapPngBlob(svg));
     } catch (reason) {
       setNotice(reason instanceof Error ? reason.message : 'Не удалось выгрузить доску.');
     }
   };
+  const activeTool = MIND_MAP_TOOLS.find((item) => item.id === tool);
   return <section style={S.workspace} aria-label={`Доска «${map.title}»`}>
     <div style={S.toolbar}>
       {renaming ? <input autoFocus aria-label="Название доски" value={title} onChange={(event) => setTitle(event.target.value)}
         onBlur={() => { if (title.trim()) props.onSave({ ...map, title: title.trim(), updatedAt: new Date().toISOString() }); else setTitle(map.title); setRenaming(false); }}
         onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); if (event.key === 'Escape') { setTitle(map.title); setRenaming(false); } }} style={S.title} /> :
         <CustomDropdown value={map.id} placeholder="Выбрать доску" options={props.maps.map((item) => ({ id: item.id, name: item.title }))} onChange={(id: string) => props.onSelect(id)} />}
+      <span style={S.divider} />
+      <div style={S.toolGroup} role="toolbar" aria-label="Инструменты доски">
+        {MIND_MAP_TOOLS.map((item) => <Btn key={item.id} size="sm" title={item.label} aria-label={item.label}
+          onClick={() => setTool((current) => current === item.id ? 'select' : item.id)}
+          style={tool === item.id && item.id !== 'select' ? { background: 'var(--accent-dim)', color: 'var(--accent)' } : undefined}>
+          <Icon name={item.icon} size={15} />
+        </Btn>)}
+      </div>
+      <span style={S.divider} />
       <Btn size="sm" variant="subtle" onClick={() => editor.current?.addNode()}><Icon name="plus" size={14} />Ветвь</Btn>
       <Btn size="sm" onClick={() => editor.current?.undo()} title="Отменить · Ctrl+Z"><Icon name="undo" size={15} /></Btn>
       <Btn size="sm" onClick={() => editor.current?.redo()} title="Повторить · Ctrl+Shift+Z"><Icon name="history" size={15} /></Btn>
@@ -82,7 +111,10 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
       <Btn size="sm" title="Действия с доской" onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setMenu({ x: rect.right, y: rect.bottom + 6 }); }}><Icon name="menu" size={15} /></Btn>
     </div>
     <div style={S.canvas}>
-      <MindMapEditor ref={editor} map={map} tasks={props.tasks} notes={props.notes} projects={props.projects} onChange={saveData} onSelect={setNode} onSelection={setSelection}
+      <MindMapEditor ref={editor} map={map} tasks={props.tasks} notes={props.notes} projects={props.projects}
+        objects={objects} tool={tool} selectedObjectId={objectId} editingObjectId={editingId}
+        onChange={saveData} onObjectsChange={saveObjects} onSelect={setNode} onSelection={setSelection}
+        onSelectObject={setObjectId} onEditObject={setEditingId} onToolUse={() => setTool('select')}
         onOpenEntity={(entity) => {
           const task = entity.kind === 'task' ? props.tasks.find((item) => item.id === entity.id) : undefined;
           const note = entity.kind === 'note' ? props.notes.find((item) => item.id === entity.id) : undefined;
@@ -95,7 +127,19 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
         <Btn size="sm" onClick={() => editor.current?.fit()} title="Вписать доску в окно"><Icon name="maximize" size={14} /></Btn>
         <Btn size="sm" onClick={() => editor.current?.center()} title="По центру"><Icon name="grid" size={14} /></Btn>
       </div>
-      {selection.length > 1 && <div style={S.selectionBar} role="toolbar" aria-label="Действия с выделенными ветвями">
+      {selectedObject && <div style={S.selectionBar} role="toolbar" aria-label="Действия с элементом доски">
+        <span style={S.selectionCount}>{OBJECT_LABELS[selectedObject.kind]}</span>
+        <span style={S.divider} />
+        {MIND_MAP_BRANCH_COLORS.map((item) => <button key={item.value} type="button" title={item.name} aria-label={`Цвет: ${item.name}`}
+          style={S.swatch(item.value, selectedObject.color === item.value)}
+          onClick={() => saveObjects(objects.map((object) => object.id === selectedObject.id
+            ? { ...object, color: object.color === item.value ? undefined : item.value } : object))} />)}
+        <span style={S.divider} />
+        {selectedObject.kind !== 'shape' && <Btn size="sm" onClick={() => setEditingId(selectedObject.id)} title="Редактировать текст"><Icon name="edit" size={14} /></Btn>}
+        <Btn size="sm" onClick={() => { saveObjects(objects.filter((object) => object.id !== selectedObject.id)); setObjectId(null); setEditingId(null); }} title="Удалить элемент"><Icon name="trash" size={14} /></Btn>
+        <Btn size="sm" onClick={() => setObjectId(null)} title="Снять выделение"><Icon name="x" size={14} /></Btn>
+      </div>}
+      {selection.length > 1 && !selectedObject && <div style={S.selectionBar} role="toolbar" aria-label="Действия с выделенными ветвями">
         <span style={S.selectionCount}>{selection.length} выбрано · перетащите, чтобы перенести</span>
         <span style={S.divider} />
         {MIND_MAP_BRANCH_COLORS.map((item) => <button key={item.value} type="button" title={item.name} aria-label={`Цвет ветвей: ${item.name}`}
@@ -103,6 +147,10 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
         <span style={S.divider} />
         <Btn size="sm" onClick={() => editor.current?.removeNodes(selection.map((node) => node.id))} title="Удалить выбранные ветви"><Icon name="trash" size={14} /></Btn>
         <Btn size="sm" onClick={() => editor.current?.clearSelection()} title="Снять выделение"><Icon name="x" size={14} /></Btn>
+      </div>}
+      {tool !== 'select' && <div style={S.toolHint} role="status">
+        <Icon name={activeTool?.icon || 'pointer'} size={13} />
+        <span>Кликните по доске — добавить {activeTool?.label.toLowerCase()}. Esc — отмена.</span>
       </div>}
       {notice && <div role="alert" style={S.notice}><span>{notice}</span><Btn size="sm" onClick={() => setNotice('')} title="Закрыть сообщение"><Icon name="x" size={13} /></Btn></div>}
       {canvasMenu && <ContextMenu x={canvasMenu.x} y={canvasMenu.y} onClose={() => setCanvasMenu(null)} items={[

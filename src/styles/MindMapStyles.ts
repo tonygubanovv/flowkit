@@ -68,6 +68,12 @@ export const MIND_MAP_STYLES = {
   error: { color: 'var(--danger)', fontSize: 12, lineHeight: 1.6 } as CSSProperties,
   image: { width: '100%', maxHeight: 160, objectFit: 'contain', borderRadius: 8 } as CSSProperties,
   hidden: UI.layout.hidden,
+  object: { position: 'absolute', cursor: 'grab', userSelect: 'none', touchAction: 'none' } as CSSProperties,
+  objectEdit: { position: 'absolute', zIndex: 6, border: '1px solid var(--accent)', borderRadius: 6, background: 'var(--card)',
+    color: 'var(--text)', padding: '6px 8px', resize: 'none', overflow: 'hidden', boxShadow: '0 10px 28px rgba(0,0,0,.28)' } as CSSProperties,
+  toolGroup: { display: 'flex', alignItems: 'center', gap: 2, padding: 2, borderRadius: 8, border: '1px solid var(--border)' } as CSSProperties,
+  toolHint: { position: 'absolute', left: 16, bottom: 56, display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+    borderRadius: 8, background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text2)', fontSize: 12, zIndex: 12 } as CSSProperties,
 };
 
 export const MIND_MAP_CSS = `
@@ -76,7 +82,9 @@ export const MIND_MAP_CSS = `
 .fk-mind-map me-root me-tpc { font-size: 19px; font-weight: 600; }
 .fk-mind-map me-tpc { font-size: 13px; box-shadow: none; }
 .fk-mind-map me-tpc { cursor: pointer; }
-.fk-mind-map me-tpc.selected { outline: none; box-shadow: 0 0 0 1px var(--accent); border-color: transparent !important; }
+.fk-mind-map me-tpc > .text { line-height: 19px; }
+.fk-mind-map me-root me-tpc > .text { line-height: 28px; }
+.fk-mind-map me-tpc.selected { outline: 2px solid var(--accent); outline-offset: 1px; box-shadow: none; }
 .fk-mind-map me-tpc:focus-visible { outline: none; }
 .fk-mind-map .map-container .selection-area { background: var(--accent-dim) !important; border: 1px solid var(--accent) !important; border-radius: 3px; }
 .fk-mind-map .map-container me-tpc .show { background: var(--accent-mid); opacity: 1; }
@@ -87,6 +95,11 @@ export const MIND_MAP_CSS = `
 .fk-mind-map me-tpc .tags { color: var(--muted); font-size: 10px; }
 .fk-mind-map me-tpc .tags span { color: var(--text2); background: var(--card-hov); border: none; border-radius: 4px; }
 .fk-mind-map me-tpc a { color: var(--text2); }
+.fk-mind-map[data-tool] .map-container { cursor: crosshair; }
+.fk-mind-map[data-tool] me-tpc { cursor: crosshair; }
+.fk-mind-layer { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; z-index: 30; }
+.fk-mind-object { pointer-events: auto; }
+.fk-mind-layer .fk-mind-object:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .fk-mind-map .map-container me-parent me-epd,
 .fk-mind-map .map-container me-parent me-epd.minus { opacity: 1; border-radius: 50%; background-image: none !important; background-color: var(--card-act); border: 1px solid var(--border-strong); }
 .fk-mind-map .map-container me-parent me-epd.minus { background-color: var(--card); border-color: var(--border); }

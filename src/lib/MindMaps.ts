@@ -1,11 +1,14 @@
 import type { MindElixirData, NodeObj } from 'mind-elixir';
-import { AppData, MindMap, MindMapAttachment, MindMapNodeMeta, Note, Project, Task } from '../types/Schemas';
+import { AppData, MindMap, MindMapAttachment, MindMapNodeMeta, MindMapObject, Note, Project, Task } from '../types/Schemas';
 import { isDoneTask } from './TaskDomain';
 
 export const MIND_MAP_FILE_LIMIT = 5 * 1024 * 1024;
 export const MIND_MAP_TOTAL_LIMIT = 20 * 1024 * 1024;
+export const MIND_MAP_OBJECT_LIMIT = 300;
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const rasterUrl = (value: unknown): value is string => typeof value === 'string' && /^data:image\/(png|jpeg|webp|gif);base64,[a-z\d+/=\s]+$/i.test(value);
+const finite = (value: unknown, fallback: number): number => typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
 export const normalizeMindMapUrl = (value: string): string | null => {
   try {
@@ -97,7 +100,35 @@ export const mindMapToMarkdown = (map: MindMap, tasks: Task[], notes: Note[], pr
     return `${'  '.repeat(depth)}${bullet}${text}${marks.length ? ` — ${marks.join(' · ')}` : ''}\n${(node.children || []).map((child) => line(child, depth + 1)).join('')}`;
   };
   const project = projects.find((item) => item.id === map.projectId);
-  return `# ${markdownCell(map.title)}\n\n${project ? `Проект: ${markdownCell(project.name)}\n\n` : ''}${line(map.data.nodeData, 0)}`;
+  const blocks = (map.objects || []).filter((item) => item.kind !== 'shape' && item.text.trim())
+    .map((item) => `- ${markdownCell(item.text)}`).join('\n');
+  return `# ${markdownCell(map.title)}\n\n${project ? `Проект: ${markdownCell(project.name)}\n\n` : ''}${line(map.data.nodeData, 0)}${blocks ? `\n## Заметки на доске\n\n${blocks}\n` : ''}`;
+};
+
+export const normalizeMindMapObjects = (value: unknown): MindMapObject[] => {
+  if (!Array.isArray(value)) return [];
+  const ids = new Set<string>();
+  return value.slice(0, MIND_MAP_OBJECT_LIMIT).flatMap((raw) => {
+    if (!record(raw) || typeof raw.id !== 'string' || ids.has(raw.id)) return [];
+    if (raw.kind !== 'text' && raw.kind !== 'shape' && raw.kind !== 'comment') return [];
+    ids.add(raw.id);
+    const color = normalizeMindMapColor(raw.color);
+    const object: MindMapObject = {
+      id: raw.id,
+      kind: raw.kind,
+      x: Math.round(clamp(finite(raw.x, 0), -100000, 100000)),
+      y: Math.round(clamp(finite(raw.y, 0), -100000, 100000)),
+      w: Math.round(clamp(finite(raw.w, 240), 40, 4000)),
+      text: typeof raw.text === 'string' ? raw.text.slice(0, 4000) : '',
+    };
+    if (raw.kind === 'shape') {
+      object.shape = raw.shape === 'ellipse' ? 'ellipse' : 'rect';
+      object.h = Math.round(clamp(finite(raw.h, 120), 24, 4000));
+    }
+    if (color) object.color = color;
+    if (typeof raw.size === 'number' && raw.size >= 10 && raw.size <= 96) object.size = Math.round(raw.size);
+    return [object];
+  });
 };
 
 export const normalizeMindMaps = (value: unknown): MindMap[] => {
@@ -141,6 +172,7 @@ export const normalizeMindMaps = (value: unknown): MindMap[] => {
     if (getMindMapBytes(data) > MIND_MAP_TOTAL_LIMIT) throw new Error('Вложения карты превышают 20 МБ');
     return { id: entry.id, title: typeof entry.title === 'string' ? entry.title : nodeData.topic,
       projectId: typeof entry.projectId === 'string' ? entry.projectId : null,
-      updatedAt: typeof entry.updatedAt === 'string' ? entry.updatedAt : new Date().toISOString(), data };
+      updatedAt: typeof entry.updatedAt === 'string' ? entry.updatedAt : new Date().toISOString(), data,
+      objects: normalizeMindMapObjects(entry.objects) };
   });
 };
