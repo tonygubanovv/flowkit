@@ -3,7 +3,7 @@ import { normalizeMindMaps } from '../lib/MindMaps';
 import { DEFAULT_ACCENT, DEFAULT_CATEGORY_COLORS, DEFAULT_PROJECT_COLORS } from '../styles/Theme';
 import { DEFAULT_BACKGROUND_PRESET, normalizeBackgroundPreset } from '../styles/Styles';
 import { normalizeTaskPriority } from '../lib/TaskPriority';
-import { AppData, Category, ID, Note, Project, Task } from '../types/Schemas';
+import { AppData, Category, Hotkeys, ID, Note, Project, Task } from '../types/Schemas';
 import { normalizeTaskLinks } from '../lib/TaskLinks';
 
 export const makeDefaultData = (): AppData => {
@@ -46,11 +46,11 @@ export const makeDefaultData = (): AppData => {
     tasks: [],
     notes: [],
     hotkeys: {
-      newTask: 'KeyN',
+      newTask: 'KeyE',
       today: 'KeyT',
       allTasks: 'KeyA',
       toggleDone: 'KeyD',
-      search: 'Slash',
+      search: 'KeyQ',
     },
     profile: {
       name: '',
@@ -98,7 +98,20 @@ export const normalizeImportedData = (value: unknown): AppData => {
     priority: normalizeTaskPriority(task.priority),
   })));
   const notes = Array.isArray(value.notes) ? (value.notes as Note[]) : defaults.notes;
-  const hotkeys = isRecord(value.hotkeys) ? { ...defaults.hotkeys, ...value.hotkeys } : defaults.hotkeys;
+  const storedHotkeys = isRecord(value.hotkeys) ? value.hotkeys : {};
+  // Прежняя клавиша по умолчанию переезжает на новую, но только пока её не меняли руками.
+  const hotkey = (key: keyof Hotkeys, legacy?: string): string => {
+    const stored = storedHotkeys[key];
+    if (typeof stored !== 'string' || !stored || stored === legacy) return defaults.hotkeys[key];
+    return stored;
+  };
+  const hotkeys: Hotkeys = {
+    newTask: hotkey('newTask', 'KeyN'),
+    today: hotkey('today'),
+    allTasks: hotkey('allTasks'),
+    toggleDone: hotkey('toggleDone'),
+    search: hotkey('search', 'Slash'),
+  };
   const importedProfile = isRecord(value.profile) ? value.profile : null;
   const profile = isRecord(value.profile)
     ? {

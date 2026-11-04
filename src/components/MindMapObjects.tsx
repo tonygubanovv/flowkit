@@ -3,12 +3,11 @@ import type { MindMapObject } from '../types/Schemas';
 import { Icon } from './ui/UiExports';
 import { MIND_MAP_STYLES as S } from '../styles/MindMapStyles';
 
-export type MindMapTool = 'select' | 'text' | 'rect' | 'ellipse' | 'comment';
+export type MindMapTool = 'select' | 'text' | 'rect' | 'comment';
 
 export const MIND_MAP_TOOLS: { id: MindMapTool; label: string; icon: string }[] = [
   { id: 'text', label: 'Текст', icon: 'type' },
   { id: 'rect', label: 'Прямоугольник', icon: 'rect' },
-  { id: 'ellipse', label: 'Эллипс', icon: 'ellipse' },
   { id: 'comment', label: 'Комментарий', icon: 'message' },
 ];
 

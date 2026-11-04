@@ -22,6 +22,7 @@ export interface MindMapEditorHandle {
   setColor: (ids: string[], color: string | null) => void;
   removeNodes: (ids: string[]) => void;
   clearSelection: () => void;
+  toCanvas: (clientX: number, clientY: number) => { x: number; y: number } | null;
   exportSvg: () => Promise<Blob | null>;
 }
 
@@ -77,7 +78,7 @@ const createObject = (tool: MindMapTool, point: { x: number; y: number }): MindM
   const id = genId();
   if (tool === 'text') return { id, kind: 'text', x: point.x, y: point.y, text: '' };
   if (tool === 'comment') return { id, kind: 'comment', x: point.x, y: point.y, text: '' };
-  return { id, kind: 'shape', shape: tool === 'ellipse' ? 'ellipse' : 'rect', x: point.x, y: point.y, w: 220, h: 130, text: '' };
+  return { id, kind: 'shape', shape: 'rect', x: point.x, y: point.y, w: 220, h: 130, text: '' };
 };
 
 const offsetInNodes = (element: HTMLElement, root: HTMLElement) => {
@@ -171,6 +172,10 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
       if (topics.length) void mind.removeNodes(topics);
     },
     clearSelection: () => { instance.current?.clearSelection(); },
+    toCanvas: (clientX, clientY) => {
+      const mind = instance.current;
+      return mind ? canvasPoint(mind, clientX, clientY) : null;
+    },
     exportSvg: async () => {
       const mind = instance.current;
       if (!mind) return null;

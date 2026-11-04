@@ -28,10 +28,17 @@ interface Props {
 }
 
 const OBJECT_LABELS: Record<MindMapObject['kind'], string> = { text: 'Текст', shape: 'Фигура', comment: 'Комментарий' };
+const OBJECT_HISTORY_LIMIT = 40;
 const NO_OBJECTS: MindMapObject[] = [];
 
 function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
   const editor = useRef<MindMapEditorHandle>(null);
+  const pointer = useRef<{ x: number; y: number } | null>(null);
+  const clipboard = useRef<MindMapObject | null>(null);
+  const past = useRef<MindMapObject[][]>([]);
+  const future = useRef<MindMapObject[][]>([]);
+  const applying = useRef(false);
+  const lastEdit = useRef<'nodes' | 'objects'>('nodes');
   const [node, setNode] = useState<NodeObj | null>(null);
   const [action, setAction] = useState<{ kind: MindMapNodeAction; x: number; y: number } | null>(null);
   const [renaming, setRenaming] = useState(false);
@@ -47,8 +54,45 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
   const objects = map.objects || NO_OBJECTS;
   const selectedObject = objects.find((item) => item.id === objectId) || null;
   const usedBytes = useMemo(() => getMindMapBytes(map.data), [map.data]);
-  const saveData = (data: MindElixirData) => props.onSave({ ...map, data, updatedAt: new Date().toISOString() });
-  const saveObjects = (next: MindMapObject[]) => props.onSave({ ...map, objects: next, updatedAt: new Date().toISOString() });
+  const saveData = (data: MindElixirData) => { lastEdit.current = 'nodes'; props.onSave({ ...map, data, updatedAt: new Date().toISOString() }); };
+  const writeObjects = (next: MindMapObject[]) => props.onSave({ ...map, objects: next, updatedAt: new Date().toISOString() });
+  const saveObjects = (next: MindMapObject[]) => {
+    if (!applying.current) {
+      lastEdit.current = 'objects';
+      future.current = [];
+      past.current.push(objects);
+      if (past.current.length > OBJECT_HISTORY_LIMIT) past.current.shift();
+    }
+    writeObjects(next);
+  };
+  const undoObjects = () => {
+    const previous = past.current.pop();
+    if (!previous) return false;
+    future.current.push(objects);
+    applying.current = true;
+    writeObjects(previous);
+    applying.current = false;
+    return true;
+  };
+  const redoObjects = () => {
+    const next = future.current.pop();
+    if (!next) return false;
+    past.current.push(objects);
+    applying.current = true;
+    writeObjects(next);
+    applying.current = false;
+    return true;
+  };
+  const runUndo = () => { if (lastEdit.current === 'objects' && past.current.length) undoObjects(); else editor.current?.undo(); };
+  const runRedo = () => { if (lastEdit.current === 'objects' && future.current.length) redoObjects(); else editor.current?.redo(); };
+  const pasteObject = (source: MindMapObject) => {
+    const canvas = pointer.current ? editor.current?.toCanvas(pointer.current.x, pointer.current.y) : null;
+    const copy: MindMapObject = { ...source, id: genId(), x: canvas?.x ?? source.x + 24, y: canvas?.y ?? source.y + 24 };
+    saveObjects([...objects, copy]);
+    setObjectId(copy.id);
+    setMore(false);
+    if (copy.kind !== 'shape') setEditingId(copy.id);
+  };
   const removeObject = (id: string) => {
     saveObjects(objects.filter((item) => item.id !== id));
     setObjectId((current) => current === id ? null : current);
@@ -77,6 +121,43 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [tool]);
+
+  const canvasHost = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    past.current = [];
+    future.current = [];
+    lastEdit.current = 'nodes';
+  }, [map.id]);
+
+  useEffect(() => {
+    const host = canvasHost.current;
+    if (!host) return;
+    // Захват, а не всплытие: слои ниже (полотно движка, слой объектов) глушат клавиши, а Ctrl+Z движок слушает сам.
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input, textarea, [contenteditable="true"]')) return;
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      const key = event.key.toLowerCase();
+      if (key === 'z' || key === 'y') {
+        event.preventDefault();
+        event.stopPropagation();
+        if (key === 'y' || (key === 'z' && event.shiftKey)) runRedo(); else runUndo();
+      } else if (key === 'c' || key === 'x') {
+        // Ветви копирует и вставляет сам движок через системный буфер; как только скобирована ветвь, буфер объектов больше не в дело.
+        if (!selectedObject) { clipboard.current = null; return; }
+        event.preventDefault();
+        event.stopPropagation();
+        clipboard.current = selectedObject;
+        if (key === 'x') removeObject(selectedObject.id);
+      } else if (key === 'v' && clipboard.current) {
+        event.preventDefault();
+        event.stopPropagation();
+        pasteObject(clipboard.current);
+      }
+    };
+    host.addEventListener('keydown', onKeyDown, true);
+    return () => host.removeEventListener('keydown', onKeyDown, true);
+  }, [selectedObject, objects]);
 
   const importProject = () => {
     if (!project) return;
@@ -123,13 +204,13 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
       </div>
       <span style={S.divider} />
       <Btn size="sm" onClick={() => editor.current?.addNode()} title="Добавить ветвь" aria-label="Добавить ветвь"><Icon name="plus" size={15} /></Btn>
-      <Btn size="sm" onClick={() => editor.current?.undo()} title="Отменить · Ctrl+Z"><Icon name="undo" size={15} /></Btn>
-      <Btn size="sm" onClick={() => editor.current?.redo()} title="Повторить · Ctrl+Shift+Z"><Icon name="history" size={15} /></Btn>
+      <Btn size="sm" onClick={runUndo} title="Отменить · Ctrl+Z"><Icon name="undo" size={15} /></Btn>
+      <Btn size="sm" onClick={runRedo} title="Повторить · Ctrl+Shift+Z"><Icon name="history" size={15} /></Btn>
       <span style={S.spacer} />
       <CustomDropdown alignRight value={map.projectId} placeholder="Без проекта" options={[{ id: null, name: 'Без проекта' }, ...props.projects]} onChange={(id: string | null) => props.onSave({ ...map, projectId: id, updatedAt: new Date().toISOString() })} icon={<Icon name="folder" size={13} />} />
       <Btn size="sm" title="Действия с доской" onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setMenu({ x: rect.right, y: rect.bottom + 6 }); }}><Icon name="menu" size={15} /></Btn>
     </div>
-    <div style={S.canvas}>
+    <div style={S.canvas} ref={canvasHost} onPointerMove={(event) => { pointer.current = { x: event.clientX, y: event.clientY }; }}>
       <MindMapEditor ref={editor} map={map} tasks={props.tasks} notes={props.notes} projects={props.projects}
         objects={objects} tool={tool} selectedObjectId={objectId} editingObjectId={editingId}
         onChange={saveData} onObjectsChange={saveObjects} onSelect={setNode} onSelection={setSelection}
