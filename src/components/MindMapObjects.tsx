@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { MindMapObject } from '../types/Schemas';
+import { Icon } from './ui/UiExports';
 import { MIND_MAP_STYLES as S } from '../styles/MindMapStyles';
 
 export type MindMapTool = 'select' | 'text' | 'rect' | 'ellipse' | 'comment';
@@ -20,23 +21,40 @@ interface Props {
   onSelect: (id: string | null) => void;
   onEdit: (id: string | null) => void;
   onCommit: (objects: MindMapObject[]) => void;
+  onObjectContext: (id: string, point: { x: number; y: number }) => void;
 }
 
+const lineHeightOf = (object: MindMapObject): number => {
+  const size = object.kind === 'comment' ? 12 : (object.size || 15);
+  return Math.round(size * (object.kind === 'comment' ? 1.45 : 1.4));
+};
+
+const typeStyle = (object: MindMapObject) => ({
+  fontSize: object.kind === 'comment' ? 12 : (object.size || 15),
+  lineHeight: `${lineHeightOf(object)}px`,
+  whiteSpace: (object.kind === 'text' ? 'pre' : 'pre-wrap') as React.CSSProperties['whiteSpace'],
+  overflowWrap: 'anywhere' as const,
+});
+
 const objectStyle = (object: MindMapObject): React.CSSProperties => {
-  const base: React.CSSProperties = { left: object.x, top: object.y, width: object.w };
   if (object.kind === 'shape') {
-    return { ...base, height: object.h || 120, borderRadius: object.shape === 'ellipse' ? '50%' : 10,
+    return { width: object.w || 220, height: object.h || 130, borderRadius: object.shape === 'ellipse' ? '50%' : 10,
       background: object.color ? `color-mix(in srgb, ${object.color} 14%, var(--card-act))` : 'var(--card-act)',
       border: `1px solid ${object.color || 'var(--border-strong)'}` };
   }
   if (object.kind === 'comment') {
-    return { ...base, padding: '8px 10px', borderRadius: 8, background: 'var(--card)',
-      border: '1px solid var(--border)', borderLeft: `3px solid ${object.color || 'var(--accent)'}`,
-      fontSize: 12, lineHeight: 1.45, color: 'var(--text)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' };
+    return { width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      borderRadius: '50% 50% 50% 0', background: object.color || 'var(--accent)', color: '#ffffff',
+      boxShadow: '0 2px 10px rgba(0,0,0,.35)' };
   }
-  return { ...base, padding: '2px 0', fontSize: object.size || 15, lineHeight: 1.4, color: object.color || 'var(--text)',
-    whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' };
+  return { ...typeStyle(object), width: 'max-content', padding: '2px 0', color: object.color || 'var(--text)' };
 };
+
+const editorStyle = (object: MindMapObject): React.CSSProperties => ({
+  ...S.objectEditor, ...typeStyle(object),
+  caretColor: object.color || 'var(--text)',
+  padding: object.kind === 'comment' ? 0 : '2px 0',
+});
 
 export function MindMapObjects(props: Props) {
   const [draft, setDraft] = useState<MindMapObject[]>(props.objects);
@@ -94,6 +112,15 @@ export function MindMapObjects(props: Props) {
     const layer = root.current;
     if (!layer) return;
     const stop = (event: Event) => event.stopPropagation();
+    const onContext = (event: MouseEvent) => {
+      event.stopPropagation();
+      const target = event.target as HTMLElement | null;
+      // Во время ввода оставляем системное меню текста: вырезать, копировать, вставить.
+      if (target?.tagName === 'TEXTAREA') return;
+      event.preventDefault();
+      const id = target?.closest('[data-object-id]')?.getAttribute('data-object-id');
+      if (id) propsRef.current.onObjectContext(id, { x: event.clientX, y: event.clientY });
+    };
     // Клавиши не должны доходить до движка: он трактует Delete/Backspace/Enter как команды карты.
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -108,11 +135,11 @@ export function MindMapObjects(props: Props) {
       event.stopPropagation();
     };
     layer.addEventListener('mousedown', stop);
-    layer.addEventListener('contextmenu', stop);
+    layer.addEventListener('contextmenu', onContext);
     layer.addEventListener('keydown', onKeyDown);
     return () => {
       layer.removeEventListener('mousedown', stop);
-      layer.removeEventListener('contextmenu', stop);
+      layer.removeEventListener('contextmenu', onContext);
       layer.removeEventListener('keydown', onKeyDown);
     };
   }, []);
@@ -167,22 +194,55 @@ export function MindMapObjects(props: Props) {
       const selected = object.id === props.selectedId;
       const editing = object.id === props.editingId;
       const editable = object.kind !== 'shape';
+      const editor = editing ? <textarea className="fk-mind-editor" aria-label="Текст на доске" value={editText}
+        ref={(element) => {
+          if (!element) return;
+          element.focus();
+          const end = element.value.length;
+          element.setSelectionRange(end, end);
+        }}
+        onChange={(event) => { setEditText(event.target.value); editTextRef.current = event.target.value; }}
+        onBlur={finishEdit}
+        style={editorStyle(object)} /> : null;
+
+      if (object.kind === 'comment') {
+        if (editing) {
+          return <div key={object.id} className="fk-mind-pin-edit" style={{ position: 'absolute', left: object.x, top: object.y }}>
+            <div style={{ ...S.object, ...objectStyle(object), position: 'absolute', left: 0, top: 0, cursor: 'default' }}><Icon name="message" size={14} /></div>
+            <div className="fk-mind-pin-card" style={S.pinCard}>
+              <div style={{ position: 'relative' }}>
+                <div style={{ ...typeStyle(object), color: 'var(--text)', minWidth: 8, minHeight: lineHeightOf(object) }}>{editText}</div>
+                {editor}
+              </div>
+            </div>
+          </div>;
+        }
+        return <div key={object.id} className="fk-mind-object fk-mind-pin" data-open={selected || undefined}
+          data-object-id={object.id}
+          role="button" tabIndex={-1}
+          aria-label={object.text.slice(0, 80) || 'Пустой комментарий'}
+          style={{ ...S.object, left: object.x, top: object.y, ...objectStyle(object), ...(selected ? { outline: '2px solid var(--accent)', outlineOffset: 2 } : {}) }}
+          onPointerDown={(event) => startDrag(event, object)}
+          onPointerMove={moveDrag}
+          onPointerUp={endDrag}
+          onDoubleClick={(event) => { event.stopPropagation(); beginEdit(object); }}>
+          <Icon name="message" size={14} />
+          <div className="fk-mind-pin-card" style={S.pinCard}>{object.text}</div>
+        </div>;
+      }
+
       if (editing) {
-        return <textarea key={object.id} aria-label="Текст на доске" value={editText}
-          ref={(element) => {
-            if (!element) return;
-            element.focus();
-            const end = element.value.length;
-            element.setSelectionRange(end, end);
-          }}
-          onChange={(event) => { setEditText(event.target.value); editTextRef.current = event.target.value; }}
-          onBlur={finishEdit}
-          style={{ ...S.objectEdit, ...objectStyle({ ...object, text: '' }) }} />;
+        return <div key={object.id} style={{ position: 'absolute', left: object.x, top: object.y,
+          outline: '1px solid var(--accent)', outlineOffset: 2 }}>
+          <div style={{ ...objectStyle(object), minWidth: 8, minHeight: lineHeightOf(object) + 4 }}>{editText}</div>
+          {editor}
+        </div>;
       }
       return <div key={object.id} className="fk-mind-object"
+        data-object-id={object.id}
         role={editable ? 'button' : undefined} tabIndex={-1}
         aria-label={editable ? (object.text.slice(0, 80) || 'Пустой текст') : 'Фигура на доске'}
-        style={{ ...S.object, ...objectStyle(object), ...(selected ? { outline: '2px solid var(--accent)', outlineOffset: 2 } : {}) }}
+        style={{ ...S.object, left: object.x, top: object.y, ...objectStyle(object), ...(selected ? { outline: '2px solid var(--accent)', outlineOffset: 2 } : {}) }}
         onPointerDown={(event) => startDrag(event, object)}
         onPointerMove={moveDrag}
         onPointerUp={endDrag}

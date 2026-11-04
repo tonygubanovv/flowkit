@@ -5,7 +5,7 @@ import { todayStr, genId } from '../lib/Helpers';
 import { isDoneTask } from '../lib/TaskDomain';
 import { PALETTE } from '../lib/Constants';
 import { Project, AppData, ID } from '../types/Schemas';
-import { Icon, ContextMenu, Btn, FillPicker, Logo } from './ui/UiExports';
+import { Icon, ContextMenu, Btn, FillPicker, BrandLogo } from './ui/UiExports';
 
 interface SidebarProps {
   data: AppData;
@@ -127,12 +127,7 @@ export function Sidebar({
     <div style={UI.sidebar.shell}>
       <div style={UI.sidebar.brandBar}>
         <div style={UI.sidebar.brandIdentity}>
-          <Logo size={28} />
-          <div
-            style={UI.sidebar.brandText}
-          >
-            FlowKit
-          </div>
+          <BrandLogo />
         </div>
       </div>
 

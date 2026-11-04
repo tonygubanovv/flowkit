@@ -22,7 +22,7 @@ export interface MindMapObject {
   kind: MindMapObjectKind;
   x: number;
   y: number;
-  w: number;
+  w?: number;
   h?: number;
   text: string;
   shape?: 'rect' | 'ellipse';

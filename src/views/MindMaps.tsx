@@ -38,6 +38,8 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
   const [title, setTitle] = useState(map.title);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [canvasMenu, setCanvasMenu] = useState<{ x: number; y: number } | null>(null);
+  const [objectMenu, setObjectMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [clipboard, setClipboard] = useState<MindMapObject | null>(null);
   const [selection, setSelection] = useState<NodeObj[]>([]);
   const [notice, setNotice] = useState('');
   const [tool, setTool] = useState<MindMapTool>('select');
@@ -45,9 +47,23 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const objects = map.objects || NO_OBJECTS;
   const selectedObject = objects.find((item) => item.id === objectId) || null;
+  const menuObject = objectMenu ? objects.find((item) => item.id === objectMenu.id) || null : null;
   const usedBytes = useMemo(() => getMindMapBytes(map.data), [map.data]);
   const saveData = (data: MindElixirData) => props.onSave({ ...map, data, updatedAt: new Date().toISOString() });
   const saveObjects = (next: MindMapObject[]) => props.onSave({ ...map, objects: next, updatedAt: new Date().toISOString() });
+  const removeObject = (id: string) => {
+    saveObjects(objects.filter((item) => item.id !== id));
+    setObjectId((current) => current === id ? null : current);
+    setEditingId((current) => current === id ? null : current);
+  };
+  const editObject = (id: string) => { setObjectId(id); setEditingId(id); };
+  const pasteAt = (point: { x: number; y: number }) => {
+    if (!clipboard) return;
+    const at = editor.current?.toCanvas(point.x, point.y) || { x: 0, y: 0 };
+    const copy: MindMapObject = { ...clipboard, id: genId(), x: at.x, y: at.y };
+    saveObjects([...objects, copy]);
+    if (copy.kind === 'shape') setObjectId(copy.id); else editObject(copy.id);
+  };
   const project = props.projects.find((item) => item.id === map.projectId);
 
   useEffect(() => {
@@ -88,6 +104,10 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
     }
   };
   const activeTool = MIND_MAP_TOOLS.find((item) => item.id === tool);
+  const placeAt = (kind: MindMapTool, point: { x: number; y: number }) => {
+    setTool('select');
+    editor.current?.placeObject(kind, point.x, point.y);
+  };
   return <section style={S.workspace} aria-label={`Доска «${map.title}»`}>
     <div style={S.toolbar}>
       {renaming ? <input autoFocus aria-label="Название доски" value={title} onChange={(event) => setTitle(event.target.value)}
@@ -122,7 +142,8 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
           if (note) props.onOpenNote(note);
         }}
         onNodeAction={(selected, kind, point) => { setNode(selected); setAction({ kind, ...point }); }}
-        onCanvasContext={(point) => setCanvasMenu(point)} />
+        onCanvasContext={(point) => { setObjectMenu(null); setCanvasMenu(point); }}
+        onObjectContext={(id, point) => { setCanvasMenu(null); setObjectId(id); setObjectMenu({ id, ...point }); }} />
       <div style={S.canvasControls}>
         <Btn size="sm" onClick={() => editor.current?.fit()} title="Вписать доску в окно"><Icon name="maximize" size={14} /></Btn>
         <Btn size="sm" onClick={() => editor.current?.center()} title="По центру"><Icon name="grid" size={14} /></Btn>
@@ -135,8 +156,8 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
           onClick={() => saveObjects(objects.map((object) => object.id === selectedObject.id
             ? { ...object, color: object.color === item.value ? undefined : item.value } : object))} />)}
         <span style={S.divider} />
-        {selectedObject.kind !== 'shape' && <Btn size="sm" onClick={() => setEditingId(selectedObject.id)} title="Редактировать текст"><Icon name="edit" size={14} /></Btn>}
-        <Btn size="sm" onClick={() => { saveObjects(objects.filter((object) => object.id !== selectedObject.id)); setObjectId(null); setEditingId(null); }} title="Удалить элемент"><Icon name="trash" size={14} /></Btn>
+        {selectedObject.kind !== 'shape' && <Btn size="sm" onClick={() => editObject(selectedObject.id)} title="Редактировать текст"><Icon name="edit" size={14} /></Btn>}
+        <Btn size="sm" onClick={() => removeObject(selectedObject.id)} title="Удалить элемент"><Icon name="trash" size={14} /></Btn>
         <Btn size="sm" onClick={() => setObjectId(null)} title="Снять выделение"><Icon name="x" size={14} /></Btn>
       </div>}
       {selection.length > 1 && !selectedObject && <div style={S.selectionBar} role="toolbar" aria-label="Действия с выделенными ветвями">
@@ -154,10 +175,24 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
       </div>}
       {notice && <div role="alert" style={S.notice}><span>{notice}</span><Btn size="sm" onClick={() => setNotice('')} title="Закрыть сообщение"><Icon name="x" size={13} /></Btn></div>}
       {canvasMenu && <ContextMenu x={canvasMenu.x} y={canvasMenu.y} onClose={() => setCanvasMenu(null)} items={[
+        { icon: 'type', label: 'Добавить текст', onClick: () => placeAt('text', canvasMenu) },
+        { icon: 'rect', label: 'Добавить прямоугольник', onClick: () => placeAt('rect', canvasMenu) },
+        { icon: 'ellipse', label: 'Добавить эллипс', onClick: () => placeAt('ellipse', canvasMenu) },
+        { icon: 'message', label: 'Добавить комментарий', onClick: () => placeAt('comment', canvasMenu) },
+        ...(clipboard ? [{ icon: 'copy', label: 'Вставить', onClick: () => pasteAt(canvasMenu) }] : []),
+        '---',
         { icon: 'plus', label: 'Добавить ветвь', onClick: () => editor.current?.addNode() },
         { icon: 'expand', label: 'Раскрыть все ветви', onClick: () => editor.current?.setAllExpanded(true) },
         { icon: 'collapse', label: 'Свернуть все ветви', onClick: () => editor.current?.setAllExpanded(false) },
         '---', { icon: 'maximize', label: 'Вписать доску', onClick: () => editor.current?.fit() },
+      ]} />}
+      {objectMenu && menuObject && <ContextMenu x={objectMenu.x} y={objectMenu.y} onClose={() => setObjectMenu(null)} items={[
+        ...(menuObject.kind === 'shape' ? [] : [{ icon: 'edit', label: 'Править текст', onClick: () => editObject(menuObject.id) }]),
+        { icon: 'copy', label: 'Скопировать', onClick: () => setClipboard(menuObject) },
+        '---',
+        { icon: 'chevT', label: 'На передний план', onClick: () => saveObjects([...objects.filter((item) => item.id !== menuObject.id), menuObject]) },
+        { icon: 'chevD', label: 'На задний план', onClick: () => saveObjects([menuObject, ...objects.filter((item) => item.id !== menuObject.id)]) },
+        '---', { icon: 'trash', label: 'Удалить', danger: true, onClick: () => removeObject(menuObject.id) },
       ]} />}
     </div>
     {node && action && <MindMapNodePanel key={`${node.id}-${action.kind}`} node={node} tasks={props.tasks} notes={props.notes} projects={props.projects} usedBytes={usedBytes}

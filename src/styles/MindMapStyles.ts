@@ -1,5 +1,6 @@
 import { CSSProperties } from 'react';
 import type { Theme } from 'mind-elixir';
+import { MIND_MAP_COMMENT_WIDTH } from '../lib/MindMaps';
 import { UI } from './Styles';
 import { BRAND_COLORS, FONT_FAMILY } from './Theme';
 
@@ -69,8 +70,12 @@ export const MIND_MAP_STYLES = {
   image: { width: '100%', maxHeight: 160, objectFit: 'contain', borderRadius: 8 } as CSSProperties,
   hidden: UI.layout.hidden,
   object: { position: 'absolute', cursor: 'grab', userSelect: 'none', touchAction: 'none' } as CSSProperties,
-  objectEdit: { position: 'absolute', zIndex: 6, border: '1px solid var(--accent)', borderRadius: 6, background: 'var(--card)',
-    color: 'var(--text)', padding: '6px 8px', resize: 'none', overflow: 'hidden', boxShadow: '0 10px 28px rgba(0,0,0,.28)' } as CSSProperties,
+  objectEditor: { position: 'absolute', inset: 0, margin: 0, fontFamily: 'inherit', background: 'transparent',
+    border: 'none', outline: 'none', color: 'transparent', caretColor: 'var(--text)', resize: 'none', overflow: 'hidden' } as CSSProperties,
+  pinCard: { position: 'absolute', left: 34, top: 0, width: 'max-content', maxWidth: MIND_MAP_COMMENT_WIDTH,
+    boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, background: 'var(--card)', border: '1px solid var(--border)',
+    boxShadow: '0 10px 28px rgba(0,0,0,.28)', fontSize: 12, lineHeight: '17px', color: 'var(--text)',
+    whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' } as CSSProperties,
   toolGroup: { display: 'flex', alignItems: 'center', gap: 2, padding: 2, borderRadius: 8, border: '1px solid var(--border)' } as CSSProperties,
   toolHint: { position: 'absolute', left: 16, bottom: 56, display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
     borderRadius: 8, background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text2)', fontSize: 12, zIndex: 12 } as CSSProperties,
@@ -99,6 +104,10 @@ export const MIND_MAP_CSS = `
 .fk-mind-map[data-tool] me-tpc { cursor: crosshair; }
 .fk-mind-layer { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; z-index: 30; }
 .fk-mind-object { pointer-events: auto; }
+.fk-mind-editor::selection { background: var(--accent-dim); }
+.fk-mind-pin-card { opacity: 0; pointer-events: none; }
+.fk-mind-pin:hover > .fk-mind-pin-card, .fk-mind-pin[data-open] > .fk-mind-pin-card, .fk-mind-pin-edit .fk-mind-pin-card { opacity: 1; }
+.fk-mind-pin-edit .fk-mind-pin-card { pointer-events: auto; }
 .fk-mind-layer .fk-mind-object:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .fk-mind-map .map-container me-parent me-epd,
 .fk-mind-map .map-container me-parent me-epd.minus { opacity: 1; border-radius: 50%; background-image: none !important; background-color: var(--card-act); border: 1px solid var(--border-strong); }

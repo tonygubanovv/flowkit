@@ -12,6 +12,7 @@ export { SI, Toggle, ColorPick, FillPicker } from './Form';
 export { CatBadge, DateBadge, Check, PriorityBadge, ProgressBar } from './Badges';
 export { Sparkline } from './Sparkline';
 export { Logo } from './Logo';
+export { BrandLogo } from './BrandLogo';
 export { ContextMenu } from './ContextMenu';
 export { ContextMenuSubmenuTrigger } from './ContextMenuSubmenuTrigger';
 export { Toast } from './Toast';

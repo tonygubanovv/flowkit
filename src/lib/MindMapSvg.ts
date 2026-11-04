@@ -1,4 +1,5 @@
 import type { MindMapObject } from '../types/Schemas';
+import { MIND_MAP_COMMENT_WIDTH } from './MindMaps';
 
 const XML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' };
 
@@ -78,38 +79,46 @@ export const buildObjectsSvg = (objects: MindMapObject[], origin: { x: number; y
     const x = Math.round(object.x - origin.x);
     const y = Math.round(object.y - origin.y);
     if (object.kind === 'shape') {
-      const h = Math.round(object.h || 120);
+      const w = Math.round(object.w || 220);
+      const h = Math.round(object.h || 130);
       const fill = object.color ? resolveColor(`color-mix(in srgb, ${object.color} 14%, ${surface})`, 'backgroundColor') : surface;
       const stroke = object.color || border;
       parts.push(object.shape === 'ellipse'
-        ? `<ellipse cx="${x + object.w / 2}" cy="${y + h / 2}" rx="${object.w / 2}" ry="${h / 2}" fill="${fill}" stroke="${stroke}" stroke-width="1"/>`
-        : `<rect x="${x}" y="${y}" width="${object.w}" height="${h}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="1"/>`);
-      grow(x, y, object.w, h);
+        ? `<ellipse cx="${x + w / 2}" cy="${y + h / 2}" rx="${w / 2}" ry="${h / 2}" fill="${fill}" stroke="${stroke}" stroke-width="1"/>`
+        : `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="1"/>`);
+      grow(x, y, w, h);
       return;
     }
 
     const size = object.kind === 'comment' ? 12 : (object.size || 15);
     const font = `${size}px ${family}`;
-    const inner = object.kind === 'comment' ? object.w - 22 : object.w;
-    const lines = wrapLines(object.text, inner, font);
-    const lineHeight = Math.round(size * 1.4);
+    const lineHeight = Math.round(size * (object.kind === 'comment' ? 1.45 : 1.4));
+    const half = Math.round((lineHeight - size) / 2);
 
     if (object.kind === 'comment') {
-      const height = lines.length * lineHeight + 16;
-      const accentColor = object.color || accent;
-      parts.push(`<rect x="${x}" y="${y}" width="${object.w}" height="${height}" rx="8" fill="${card}" stroke="${border}" stroke-width="1"/>`);
-      parts.push(`<rect x="${x}" y="${y}" width="3" height="${height}" fill="${accentColor}"/>`);
-      grow(x, y, object.w, height);
-    } else {
-      grow(x, y, object.w, lines.length * lineHeight);
+      const pin = object.color || accent;
+      parts.push(`<path d="M${x} ${y + 28} L${x} ${y + 14} A14 14 0 0 1 ${x + 14} ${y} A14 14 0 0 1 ${x + 28} ${y + 14} A14 14 0 0 1 ${x + 14} ${y + 28} Z" fill="${pin}"/>`);
+      // Карточка на экране живёт в `width: max-content; max-width`, поэтому перенос считаем от той же ширины.
+      const natural = Math.round(Math.max(0, ...object.text.split('\n').map((line) => measure(line, font)))) + 22;
+      const width = Math.min(natural, MIND_MAP_COMMENT_WIDTH);
+      const lines = wrapLines(object.text, width - 22, font);
+      const height = lines.length * lineHeight + 18;
+      const cardX = x + 34;
+      parts.push(`<rect x="${cardX}" y="${y}" width="${width}" height="${height}" rx="8" fill="${card}" stroke="${border}" stroke-width="1"/>`);
+      const textX = cardX + 11;
+      const spans = lines.map((line, index) =>
+        `<tspan x="${textX}" dy="${index === 0 ? 0 : lineHeight}">${escapeXml(line)}</tspan>`).join('');
+      parts.push(`<text x="${textX}" y="${y + 9 + half + size}" font-family="${escapeXml(family)}" font-size="${size}" fill="${textColor}">${spans}</text>`);
+      grow(x, y, 34 + width, Math.max(28, height));
+      return;
     }
 
-    const textX = x + (object.kind === 'comment' ? 11 : 0);
-    const baseline = y + (object.kind === 'comment' ? 8 : 0) + size;
-    const fill = object.color || (object.kind === 'comment' ? textColor : textColor);
+    const lines = object.text.split('\n');
+    const width = Math.round(Math.max(0, ...lines.map((line) => measure(line, font))));
     const spans = lines.map((line, index) =>
-      `<tspan x="${textX}" dy="${index === 0 ? 0 : lineHeight}">${escapeXml(line)}</tspan>`).join('');
-    parts.push(`<text x="${textX}" y="${baseline}" font-family="${escapeXml(family)}" font-size="${size}" fill="${fill}">${spans}</text>`);
+      `<tspan x="${x}" dy="${index === 0 ? 0 : lineHeight}">${escapeXml(line)}</tspan>`).join('');
+    parts.push(`<text x="${x}" y="${y + 2 + half + size}" font-family="${escapeXml(family)}" font-size="${size}" fill="${object.color || textColor}">${spans}</text>`);
+    grow(x, y, width, lines.length * lineHeight + 4);
   });
 
   if (!parts.length) return { markup: '', box: { minX: 0, minY: 0, maxX: 0, maxY: 0 } };

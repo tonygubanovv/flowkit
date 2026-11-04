@@ -3129,15 +3129,6 @@ export const UI = {
       justifyContent: 'space-between',
     } as CSSProperties,
 
-    brandText: {
-      color: 'var(--text)',
-      fontSize: 17,
-      fontWeight: 700,
-      letterSpacing: '-0.3px',
-      userSelect: 'none',
-      fontFamily,
-    } as CSSProperties,
-
     logoSvg: {
       display: 'block',
       flexShrink: 0,

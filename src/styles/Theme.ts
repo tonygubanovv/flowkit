@@ -36,6 +36,7 @@ export const RAW_COLORS = {
 } as const;
 
 export const BRAND_COLORS = {
+  flowkit: '#7CFF5A',
   teal: '#2dd4bf',
   emerald: '#34d399',
   cyan: '#22d3ee',
@@ -135,13 +136,17 @@ export const EFFECTS = {
   miniTaskGradientHover: 'var(--card-hov)',
 } as const;
 
-export const BRAND_LOGO = {
-  start: BRAND_COLORS.teal,
-  end: BRAND_COLORS.emerald,
-  dot: BRAND_COLORS.teal,
-} as const;
+export const DEFAULT_ACCENT: string = BRAND_COLORS.flowkit;
 
-export const DEFAULT_ACCENT: string = BRAND_COLORS.teal;
+export const BRAND_MARK_VIEW_BOX = '0 0 256 256';
+
+export const BRAND_MARK_PATHS = [
+  'M87 34H210C227 34 235 49 225 62L201 87C197 91 191 94 184 94H55C38 94 32 79 44 66L70 41C75 36 80 34 87 34Z',
+  'M62 107H181C195 107 202 102 210 101C223 100 230 113 220 126L203 143C198 149 191 151 183 151H61C50 151 45 155 38 160C28 166 15 158 17 146C18 141 21 137 26 131L45 114C50 109 55 107 62 107Z',
+  'M61 170H188C207 170 216 186 203 200L184 219C179 224 173 226 165 226H38C19 226 12 209 26 195L44 177C49 172 55 170 61 170Z',
+] as const;
+
+export const FLOWKIT_ACCENT_VAR = `var(--flowkit-accent, ${DEFAULT_ACCENT})`;
 
 export const ACCENT_PRESETS = [
   { name: 'Полночь', color: '#8b5cf6' },
@@ -274,6 +279,8 @@ const setVar = (name: string, value: string) => {
   document.documentElement.style.setProperty(name, value, 'important');
 };
 
+let faviconBlobUrl: string | null = null;
+
 const updateFavicon = () => {
   let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
 
@@ -283,21 +290,15 @@ const updateFavicon = () => {
     document.head.appendChild(link);
   }
 
-  const faviconSvg = `
-    <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M46 112C46 112 70 136 94 136C118 136 130 64 154 64C178 64 178 88 178 88" stroke="url(#flowkit-favicon-gradient)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M29 100C36.732 100 43 93.732 43 86C43 78.268 36.732 72 29 72C21.268 72 15 78.268 15 86C15 93.732 21.268 100 29 100Z" fill="${T.accent}"/>
-      <defs>
-        <linearGradient id="flowkit-favicon-gradient" x1="46" y1="64" x2="106.535" y2="174.981" gradientUnits="userSpaceOnUse">
-          <stop stop-color="${T.accent}"/>
-          <stop offset="1" stop-color="${T.accent}" stop-opacity="0.62"/>
-        </linearGradient>
-      </defs>
-    </svg>
-  `.trim();
+  const paths = BRAND_MARK_PATHS.map((d) => `<path d="${d}"/>`).join('');
+  const faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="${BRAND_MARK_VIEW_BOX}" role="img" aria-label="FlowKit">`
+    + `<g fill="${T.accent}">${paths}</g></svg>`;
+
+  if (faviconBlobUrl) URL.revokeObjectURL(faviconBlobUrl);
+  faviconBlobUrl = URL.createObjectURL(new Blob([faviconSvg], { type: 'image/svg+xml' }));
 
   link.type = 'image/svg+xml';
-  link.href = `data:image/svg+xml,${encodeURIComponent(faviconSvg)}`;
+  link.href = faviconBlobUrl;
 };
 
 export const updateTheme = (accentColor = DEFAULT_ACCENT): void => {
@@ -333,9 +334,7 @@ export const updateTheme = (accentColor = DEFAULT_ACCENT): void => {
   setVar('--shadow-lg', T.shadowLg);
   setVar('--color-white', RAW_COLORS.white);
   setVar('--color-black', RAW_COLORS.black);
-  setVar('--logo-start', T.accent);
-  setVar('--logo-end', T.accentMid);
-  setVar('--logo-dot', T.accent);
+  setVar('--flowkit-accent', T.accent);
   updateFavicon();
   document.documentElement.style.colorScheme = 'dark';
 };

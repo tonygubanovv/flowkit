@@ -13,6 +13,8 @@ import { MindMapObjects, MindMapTool } from './MindMapObjects';
 export interface MindMapEditorHandle {
   addNode: (node?: NodeObj) => void;
   patchNode: (id: string, patch: Partial<NodeObj>) => void;
+  placeObject: (tool: MindMapTool, clientX: number, clientY: number) => void;
+  toCanvas: (clientX: number, clientY: number) => { x: number; y: number };
   undo: () => void;
   redo: () => void;
   center: () => void;
@@ -41,6 +43,7 @@ interface Props {
   onSelection: (nodes: NodeObj[]) => void;
   onSelectObject: (id: string | null) => void;
   onEditObject: (id: string | null) => void;
+  onObjectContext: (id: string, point: { x: number; y: number }) => void;
   onToolUse: () => void;
   onNodeAction: (node: NodeObj, action: MindMapNodeAction, point: { x: number; y: number }) => void;
   onOpenEntity: (entity: NonNullable<MindMapNodeMeta['entity']>) => void;
@@ -73,8 +76,8 @@ const canvasPoint = (mind: MindElixir, clientX: number, clientY: number) => {
 
 const createObject = (tool: MindMapTool, point: { x: number; y: number }): MindMapObject => {
   const id = genId();
-  if (tool === 'text') return { id, kind: 'text', x: point.x, y: point.y, w: 260, text: '' };
-  if (tool === 'comment') return { id, kind: 'comment', x: point.x, y: point.y, w: 260, text: '' };
+  if (tool === 'text') return { id, kind: 'text', x: point.x, y: point.y, text: '' };
+  if (tool === 'comment') return { id, kind: 'comment', x: point.x, y: point.y, text: '' };
   return { id, kind: 'shape', shape: tool === 'ellipse' ? 'ellipse' : 'rect', x: point.x, y: point.y, w: 220, h: 130, text: '' };
 };
 
@@ -100,8 +103,22 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
   const [scale, setScale] = useState(100);
   const [layerHost, setLayerHost] = useState<HTMLElement | null>(null);
 
+  const placeObject = (tool: MindMapTool, clientX: number, clientY: number) => {
+    const mind = instance.current;
+    if (!mind) return;
+    const object = createObject(tool, canvasPoint(mind, clientX, clientY));
+    latest.current.onObjectsChange([...(latest.current.objects || []), object]);
+    latest.current.onSelectObject(object.id);
+    if (object.kind !== 'shape') latest.current.onEditObject(object.id);
+  };
+
   useImperativeHandle(ref, () => ({
     addNode: (node) => { void instance.current?.addChild(undefined, node); },
+    placeObject: (tool, clientX, clientY) => placeObject(tool, clientX, clientY),
+    toCanvas: (clientX, clientY) => {
+      const mind = instance.current;
+      return mind ? canvasPoint(mind, clientX, clientY) : { x: 0, y: 0 };
+    },
     patchNode: (id, patch) => {
       const mind = instance.current;
       if (!mind) return;
@@ -285,11 +302,8 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
         if (target?.closest('.fk-mind-object')) return;
         event.preventDefault();
         event.stopPropagation();
-        const object = createObject(tool, canvasPoint(mind, event.clientX, event.clientY));
-        latest.current.onObjectsChange([...(latest.current.objects || []), object]);
-        latest.current.onSelectObject(object.id);
+        placeObject(tool, event.clientX, event.clientY);
         latest.current.onToolUse();
-        if (object.kind !== 'shape') latest.current.onEditObject(object.id);
       };
       host.current?.addEventListener('mousedown', pointerDown, true);
       // Пока активен инструмент, движок не должен выделять узлы и двигать карту под курсором.
@@ -354,7 +368,7 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
     }} />
     {layerHost && createPortal(
       <MindMapObjects objects={props.objects} scale={scale / 100} selectedId={props.selectedObjectId} editingId={props.editingObjectId}
-        onSelect={selectObject} onEdit={props.onEditObject} onCommit={props.onObjectsChange} />,
+        onSelect={selectObject} onEdit={props.onEditObject} onCommit={props.onObjectsChange} onObjectContext={props.onObjectContext} />,
       layerHost)}
     {error ? <div role="alert" style={S.empty}>Не удалось открыть карту. Данные сохранены — выберите другую карту или обновите страницу.</div> :
       <div style={S.help}><span /><span>{scale}%</span></div>}

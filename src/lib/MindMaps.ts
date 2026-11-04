@@ -5,6 +5,7 @@ import { isDoneTask } from './TaskDomain';
 export const MIND_MAP_FILE_LIMIT = 5 * 1024 * 1024;
 export const MIND_MAP_TOTAL_LIMIT = 20 * 1024 * 1024;
 export const MIND_MAP_OBJECT_LIMIT = 300;
+export const MIND_MAP_COMMENT_WIDTH = 320;
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const rasterUrl = (value: unknown): value is string => typeof value === 'string' && /^data:image\/(png|jpeg|webp|gif);base64,[a-z\d+/=\s]+$/i.test(value);
 const finite = (value: unknown, fallback: number): number => typeof value === 'number' && Number.isFinite(value) ? value : fallback;
@@ -118,12 +119,12 @@ export const normalizeMindMapObjects = (value: unknown): MindMapObject[] => {
       kind: raw.kind,
       x: Math.round(clamp(finite(raw.x, 0), -100000, 100000)),
       y: Math.round(clamp(finite(raw.y, 0), -100000, 100000)),
-      w: Math.round(clamp(finite(raw.w, 240), 40, 4000)),
       text: typeof raw.text === 'string' ? raw.text.slice(0, 4000) : '',
     };
     if (raw.kind === 'shape') {
       object.shape = raw.shape === 'ellipse' ? 'ellipse' : 'rect';
-      object.h = Math.round(clamp(finite(raw.h, 120), 24, 4000));
+      object.w = Math.round(clamp(finite(raw.w, 220), 40, 4000));
+      object.h = Math.round(clamp(finite(raw.h, 130), 24, 4000));
     }
     if (color) object.color = color;
     if (typeof raw.size === 'number' && raw.size >= 10 && raw.size <= 96) object.size = Math.round(raw.size);
