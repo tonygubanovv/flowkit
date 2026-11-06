@@ -22,6 +22,20 @@ export function ProjModal({ project, onSave, onClose, isMobile }: ProjModalProps
 
   if (!proj) return null;
 
+  const moveColumn = (id: string, offset: -1 | 1) => {
+    setProj(current => {
+      if (!current) return current;
+
+      const index = current.columns.findIndex(column => column.id === id);
+      const targetIndex = index + offset;
+      if (index < 0 || targetIndex < 0 || targetIndex >= current.columns.length) return current;
+
+      const columns = [...current.columns];
+      [columns[index], columns[targetIndex]] = [columns[targetIndex], columns[index]];
+      return { ...current, columns };
+    });
+  };
+
   const addCol = () => {
     if (!n.trim()) return;
     setProj(p => {
@@ -50,7 +64,7 @@ export function ProjModal({ project, onSave, onClose, isMobile }: ProjModalProps
         <div style={UI.projectModal.body}>
           {proj.columns.length === 0 && <p style={APP_STATUS_STYLES.text}>Добавьте первую колонку, чтобы создавать задачи в этом проекте.</p>}
           <div style={UI.projectModal.columns}>
-            {proj.columns.map((col) => (
+            {proj.columns.map((col, index) => (
               <div key={col.id} style={UI.projectModal.columnCard}>
                 <div style={UI.projectModal.columnRow}>
                   <div style={UI.projectModal.fillEditor}>
@@ -59,10 +73,18 @@ export function ProjModal({ project, onSave, onClose, isMobile }: ProjModalProps
                   <input value={col.name} onChange={e => setProj(p => p ? ({ ...p, columns: p.columns.map(c => c.id === col.id ? { ...c, name: e.target.value } : c) }) : null)} style={UI.projectModal.columnInput} />
                   <button onClick={() => setProj(p => p ? ({ ...p, columns: p.columns.filter(c => c.id !== col.id) }) : null)} className="fk-modal-icon-danger" style={UI.settings.deleteButton}><Icon name="trash" size={16}/></button>
                 </div>
-                <label style={UI.projectModal.doneLabel(!!col.isDone)}>
-                  <input type="checkbox" checked={col.isDone || false} onChange={e => setProj(p => p ? ({ ...p, columns: p.columns.map(c => c.id === col.id ? { ...c, isDone: e.target.checked } : c) }) : null)} /> 
-                  Финальная колонка (Готово)
-                </label>
+                <div style={UI.projectModal.columnRow}>
+                  <label style={UI.projectModal.doneLabel(!!col.isDone)}>
+                    <input type="checkbox" checked={col.isDone || false} onChange={e => setProj(p => p ? ({ ...p, columns: p.columns.map(c => c.id === col.id ? { ...c, isDone: e.target.checked } : c) }) : null)} />
+                    Финальная колонка (Готово)
+                  </label>
+                  <Btn size="sm" aria-label={`Поднять колонку «${col.name}»`} title="Выше" disabled={index === 0} onClick={() => moveColumn(col.id, -1)}>
+                    <Icon name="chevT" size={16} />
+                  </Btn>
+                  <Btn size="sm" aria-label={`Опустить колонку «${col.name}»`} title="Ниже" disabled={index === proj.columns.length - 1} onClick={() => moveColumn(col.id, 1)}>
+                    <Icon name="chevD" size={16} />
+                  </Btn>
+                </div>
               </div>
             ))}
           </div>
