@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, type ReactNode } from "react";
 import { useEditor, EditorContent, Editor, ReactNodeViewRenderer } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -51,13 +51,18 @@ interface RichEditorProps {
   content: string;
   onChange: (html: string) => void;
   placeholder?: string;
+  variant?: 'default' | 'page';
+  children?: ReactNode;
 }
 
 export function RichEditor({
   content,
   onChange,
   placeholder = "Начни писать (поддерживается Markdown)...",
+  variant = "default",
+  children,
 }: RichEditorProps) {
+  const isPage = variant === "page";
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tableMenuRef = useRef<HTMLDivElement>(null);
   const headingMenuRef = useRef<HTMLDivElement>(null);
@@ -375,14 +380,16 @@ export function RichEditor({
         style={UI.richEditor.hiddenInput}
       />
 
-      <div style={UI.richEditor.toolbar}>
-        <button className="fk-hover-subtle" onClick={() => editor.chain().focus().toggleBold().run()} style={UI.richEditor.button(editor.isActive("bold"))}>B</button>
-        <button className="fk-hover-subtle" onClick={() => editor.chain().focus().toggleUnderline().run()} style={UI.richEditor.buttonUnderline(editor.isActive("underline"))}>U</button>
-        <button className="fk-hover-subtle" onClick={() => editor.chain().focus().toggleStrike().run()} style={UI.richEditor.buttonStrike(editor.isActive("strike"))}>S</button>
+      <div style={UI.richEditor.ribbon}>
+        <div style={UI.richEditor.group}>
+          <button className="fk-hover-subtle" onClick={() => editor.chain().focus().toggleBold().run()} style={UI.richEditor.button(editor.isActive("bold"))}>B</button>
+          <button className="fk-hover-subtle" onClick={() => editor.chain().focus().toggleUnderline().run()} style={UI.richEditor.buttonUnderline(editor.isActive("underline"))}>U</button>
+          <button className="fk-hover-subtle" onClick={() => editor.chain().focus().toggleStrike().run()} style={UI.richEditor.buttonStrike(editor.isActive("strike"))}>S</button>
+        </div>
 
         <div style={UI.richEditor.separator} />
 
-        <div ref={headingMenuRef} style={{ position: "relative", flexShrink: 0 }}>
+        <div ref={headingMenuRef} style={{ ...UI.richEditor.group, position: "relative" }}>
           <button
             type="button"
             className="fk-hover-subtle"
@@ -441,26 +448,34 @@ export function RichEditor({
 
         <div style={UI.richEditor.separator} />
 
-        <button className="fk-hover-subtle" onClick={setLink} style={UI.richEditor.button(editor.isActive("link"))} title="Добавить ссылку"><LinkIcon /></button>
-        <button className="fk-hover-subtle" onClick={triggerFileInput} style={UI.richEditor.button(false)} title="Загрузить картинку"><ImageIcon /></button>
+        <div style={UI.richEditor.group}>
+          <button className="fk-hover-subtle" onClick={setLink} style={UI.richEditor.button(editor.isActive("link"))} title="Добавить ссылку"><LinkIcon /></button>
+          <button className="fk-hover-subtle" onClick={triggerFileInput} style={UI.richEditor.button(false)} title="Загрузить картинку"><ImageIcon /></button>
+        </div>
 
         <div style={UI.richEditor.separator} />
 
-        <button className="fk-hover-subtle" onClick={() => editor.chain().focus().toggleBulletList().run()} style={UI.richEditor.button(editor.isActive("bulletList"))}><ListIcon /></button>
-        <button className="fk-hover-subtle" onClick={() => editor.chain().focus().toggleOrderedList().run()} style={UI.richEditor.button(editor.isActive("orderedList"))}><OrderedListIcon /></button>
+        <div style={UI.richEditor.group}>
+          <button className="fk-hover-subtle" onClick={() => editor.chain().focus().toggleBulletList().run()} style={UI.richEditor.button(editor.isActive("bulletList"))} title="Маркированный список"><ListIcon /></button>
+          <button className="fk-hover-subtle" onClick={() => editor.chain().focus().toggleOrderedList().run()} style={UI.richEditor.button(editor.isActive("orderedList"))} title="Нумерованный список"><OrderedListIcon /></button>
+        </div>
 
         <div style={UI.richEditor.separator} />
 
-        <button className="fk-hover-subtle" onClick={() => editor.chain().focus().toggleBlockquote().run()} style={UI.richEditor.button(editor.isActive("blockquote"))} title="Цитата"><QuoteIcon /></button>
-        <button className="fk-hover-subtle" onClick={() => editor.chain().focus().toggleCodeBlock({ language: "javascript" }).run()} style={UI.richEditor.button(editor.isActive("codeBlock"))} title="Блок кода"><CodeIcon /></button>
+        <div style={UI.richEditor.group}>
+          <button className="fk-hover-subtle" onClick={() => editor.chain().focus().toggleBlockquote().run()} style={UI.richEditor.button(editor.isActive("blockquote"))} title="Цитата"><QuoteIcon /></button>
+          <button className="fk-hover-subtle" onClick={() => editor.chain().focus().toggleCodeBlock({ language: "javascript" }).run()} style={UI.richEditor.button(editor.isActive("codeBlock"))} title="Блок кода"><CodeIcon /></button>
+        </div>
 
         <div style={UI.richEditor.separator} />
 
-        <button className="fk-hover-subtle" onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()} style={UI.richEditor.button(false)} title="Очистить форматирование"><EraserIcon /></button>
+        <div style={UI.richEditor.group}>
+          <button className="fk-hover-subtle" onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()} style={UI.richEditor.button(false)} title="Очистить форматирование"><EraserIcon /></button>
+        </div>
 
         <div style={UI.richEditor.separator} />
 
-        <div ref={tableMenuRef} style={{ position: "relative" }}>
+        <div ref={tableMenuRef} style={{ ...UI.richEditor.group, position: "relative" }}>
           <button className="fk-hover-subtle" onClick={() => setTableMenuOpen((open) => !open)} style={tableButtonStyle(inTable || tableMenuOpen)} title="Таблица">
             <TableIcon />
           </button>
@@ -553,14 +568,7 @@ export function RichEditor({
         </div>
       </div>
 
-      <div
-        ref={editorShellRef}
-        style={UI.richEditor.editorShell}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) editor.commands.focus("end");
-        }}
-      >
-        <style>{`
+      <style>{`
           .ProseMirror {
             outline: none;
             line-height: 1.55;
@@ -701,9 +709,50 @@ export function RichEditor({
           .ProseMirror a:hover {
             opacity: 0.78;
           }
+
+          .fk-page .ProseMirror {
+            font-size: 16px;
+            line-height: 1.7;
+            font-weight: 400;
+            color: ${T.text};
+          }
+
+          .fk-page .ProseMirror p { margin: 0 0 0.72em; }
+          .fk-page .ProseMirror h1 { font-size: 28px; margin: 1.05em 0 0.45em; }
+          .fk-page .ProseMirror h2 { font-size: 23px; margin: 0.95em 0 0.4em; }
+          .fk-page .ProseMirror h3 { font-size: 18px; margin: 0.9em 0 0.35em; }
+          .fk-page .ProseMirror ul, .fk-page .ProseMirror ol { padding-left: 26px; }
+          .fk-page .ProseMirror blockquote { margin: 14px 0; }
+          .fk-page .ProseMirror img { margin: 18px 0; }
         `}</style>
-        <EditorContent editor={editor} />
-      </div>
+
+      {isPage ? (
+        <div className="fk-page" style={UI.richEditor.sheet}>
+          <div style={UI.richEditor.sheetBody}>
+            {children}
+
+            <div
+              ref={editorShellRef}
+              style={UI.richEditor.editorShell}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) editor.commands.focus("end");
+              }}
+            >
+              <EditorContent editor={editor} />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
+          ref={editorShellRef}
+          style={UI.richEditor.editorShell}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) editor.commands.focus("end");
+          }}
+        >
+          <EditorContent editor={editor} />
+        </div>
+      )}
     </div>
   );
 }

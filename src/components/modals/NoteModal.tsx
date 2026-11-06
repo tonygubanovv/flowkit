@@ -43,21 +43,22 @@ export function NoteModal({ note: init, isNew, onClose, onSave, onDelete, isMobi
         </div>
 
         <div style={UI.modal.body()}>
-          <textarea
-            ref={titleRef}
-            autoFocus={isNew}
-            placeholder="Без названия..."
-            value={note.title}
-            rows={1}
-            onChange={(e) => setNote((current) => ({ ...current, title: e.target.value }))}
-            style={UI.modal.titleInput}
-          />
-
           <RichEditor
+            variant="page"
             content={note.content || ''}
             onChange={(html) => setNote((current) => ({ ...current, content: html }))}
             placeholder="Начни писать регламент, идею или ТЗ..."
-          />
+          >
+            <textarea
+              ref={titleRef}
+              autoFocus={isNew}
+              placeholder="Без названия..."
+              value={note.title}
+              rows={1}
+              onChange={(e) => setNote((current) => ({ ...current, title: e.target.value }))}
+              style={UI.richEditor.pageTitle}
+            />
+          </RichEditor>
         </div>
 
         <div style={UI.modal.footer()}>

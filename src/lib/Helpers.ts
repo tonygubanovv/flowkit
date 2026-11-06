@@ -1,4 +1,6 @@
 ﻿
+import { MONTHS_SHORT } from './Constants';
+
 export const genId = (): string => Math.random().toString(36).slice(2, 9);
 
 // Строго локальная дата (YYYY-MM-DD) без учета UTC сдвигов
@@ -72,6 +74,18 @@ export function formatRuDateTime(value: string | Date | null | undefined): strin
     hour: '2-digit',
     minute: '2-digit',
   })}`;
+}
+
+// Дата в формате списка документов: «5 ноя 2026, 14:20»
+export function formatNoteDate(value: string | Date | null | undefined): string {
+  if (!value) return '';
+
+  const date = value instanceof Date ? value : new Date(value.includes('T') ? value : `${value}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  const time = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+  return `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]} ${date.getFullYear()}, ${time}`;
 }
 
 export const dateStatus = (d?: string | null, isDone?: boolean): 'done' | 'overdue' | 'today' | 'future' | null => {

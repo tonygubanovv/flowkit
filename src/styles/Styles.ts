@@ -2562,14 +2562,23 @@ export const UI = {
       display: 'none',
     } as CSSProperties,
 
-    toolbar: {
+    ribbon: {
       display: 'flex',
       alignItems: 'center',
-      flexWrap: 'nowrap',
-      gap: 4,
+      flexWrap: 'wrap',
+      gap: 2,
+      padding: '6px 8px',
       marginBottom: 12,
+      borderBottom: '1px solid var(--border2)',
       maxWidth: '100%',
       overflow: 'visible',
+    } as CSSProperties,
+
+    group: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 2,
+      flexShrink: 0,
     } as CSSProperties,
 
     button: (active = false, overrides?: CSSProperties): CSSProperties => ({
@@ -2612,6 +2621,37 @@ export const UI = {
     editorShell: {
       cursor: 'text',
       background: 'transparent',
+    } as CSSProperties,
+
+    sheet: {
+      borderRadius: 12,
+      border: '1px solid var(--border2)',
+      background: 'var(--card-act)',
+      boxShadow: `${EFFECTS.cardShadow}, ${EFFECTS.glassRim}`,
+      overflow: 'hidden',
+    } as CSSProperties,
+
+    sheetBody: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 16,
+      minHeight: 440,
+      padding: '32px 44px 44px',
+    } as CSSProperties,
+
+    pageTitle: {
+      width: '100%',
+      border: 'none',
+      outline: 'none',
+      boxShadow: 'none',
+      resize: 'none',
+      overflow: 'hidden',
+      background: 'transparent',
+      color: T.text,
+      fontSize: 30,
+      lineHeight: 1.25,
+      fontWeight: 700,
+      fontFamily,
     } as CSSProperties,
   },
 
@@ -3626,6 +3666,7 @@ export const UI = {
   notes: {
     shell: {
       height: '100%',
+      width: '100%',
       overflowY: 'auto',
       padding: 24,
       paddingBottom: 100,
@@ -3664,12 +3705,21 @@ export const UI = {
       fontFamily,
     } as CSSProperties,
 
-    boardShell: {
+    listShell: {
       padding: 0,
       borderRadius: 0,
       background: 'transparent',
       border: 'none',
       boxShadow: 'none',
+    } as CSSProperties,
+
+    listPanel: {
+      maxWidth: 880,
+      borderRadius: 12,
+      border: '1px solid var(--border2)',
+      background: 'var(--card)',
+      overflow: 'hidden',
+      boxShadow: EFFECTS.cardShadow,
     } as CSSProperties,
 
     emptyShell: {
@@ -3726,74 +3776,67 @@ export const UI = {
       fontFamily,
     } as CSSProperties,
 
-    card: (surface: CSSProperties): CSSProperties => ({
-      ...surface,
-      minHeight: 148,
+    row: {
       display: 'flex',
       flexDirection: 'column',
-      gap: 12,
-      position: 'relative',
-      overflow: 'hidden',
-      padding: '18px 18px 14px',
-      borderRadius: 20,
-      border: '1px solid var(--border2)',
-      background: surface.background,
+      gap: 6,
+      padding: '14px 18px 16px',
+      borderBottom: '1px solid var(--border2)',
       color: 'var(--text)',
       cursor: 'pointer',
       userSelect: 'none',
-      boxShadow: '0 6px 18px rgba(0, 0, 0, 0.28)',
-      transition: 'background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease',
+      transition: 'background 0.16s ease',
       fontFamily,
-    }),
+    } as CSSProperties,
 
-    title: {
+    rowHead: {
+      display: 'flex',
+      alignItems: 'baseline',
+      justifyContent: 'space-between',
+      gap: 16,
+      minWidth: 0,
+    } as CSSProperties,
+
+    rowTitle: {
       minWidth: 0,
       color: 'var(--text)',
       fontSize: 16,
       lineHeight: 1.35,
-      fontWeight: 700,
+      fontWeight: 600,
       wordBreak: 'break-word',
       fontFamily,
     } as CSSProperties,
 
-    headerRow: {
+    rowMeta: {
       display: 'flex',
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
-      gap: 12,
+      alignItems: 'center',
+      gap: 8,
+      flexShrink: 0,
     } as CSSProperties,
 
-    headerMain: {
-      minWidth: 0,
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: 10,
-      flex: 1,
-    } as CSSProperties,
-
-    footerText: {
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
+    rowDate: {
+      color: 'var(--muted)',
+      fontSize: 12,
+      fontWeight: 500,
       whiteSpace: 'nowrap',
+      fontFamily,
     } as CSSProperties,
 
-    menuButton: (visible: boolean): CSSProperties => ({
-      width: 28,
-      minWidth: 28,
-      height: 28,
+    rowMenu: {
+      width: 26,
+      minWidth: 26,
+      height: 26,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      marginTop: -4,
-      marginRight: -4,
       border: 'none',
       borderRadius: BUTTON_RADIUS,
       background: 'transparent',
       color: 'var(--muted)',
       cursor: 'pointer',
-      opacity: visible ? 1 : 0,
+      opacity: 0,
       transition: 'background 0.15s ease, color 0.15s ease, opacity 0.15s ease',
-    }),
+    } as CSSProperties,
 
     dragHandle: {
       width: 28,
@@ -3813,37 +3856,23 @@ export const UI = {
       transition: 'background 0.15s ease, color 0.15s ease, opacity 0.15s ease',
     } as CSSProperties,
 
-    preview: (lineClamp: number): CSSProperties => ({
+    rowPreview: {
       color: 'var(--text2)',
       fontSize: 13.5,
-      lineHeight: 1.58,
-      fontWeight: 500,
-      display: '-webkit-box',
-      WebkitLineClamp: lineClamp,
-      WebkitBoxOrient: 'vertical',
+      lineHeight: 1.5,
+      fontWeight: 400,
+      maxHeight: 41,
       overflow: 'hidden',
       wordBreak: 'break-word',
       fontFamily,
-    }),
-
-    emptyPreview: {
-      color: 'var(--muted)',
-      fontSize: 13.5,
-      fontWeight: 500,
-      fontStyle: 'italic',
-      opacity: 0.78,
-      fontFamily,
     } as CSSProperties,
 
-    footer: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 8,
-      marginTop: 'auto',
-      paddingTop: 10,
+    rowPreviewEmpty: {
       color: 'var(--muted)',
-      fontSize: 11.5,
-      fontWeight: 600,
+      fontSize: 13.5,
+      fontWeight: 400,
+      fontStyle: 'italic',
+      opacity: 0.78,
       fontFamily,
     } as CSSProperties,
 
