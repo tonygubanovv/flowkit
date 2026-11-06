@@ -57,6 +57,7 @@ export const makeDefaultData = (): AppData => {
       avatarEmoji: '🚀',
       accentColor: DEFAULT_ACCENT,
       backgroundPreset: DEFAULT_BACKGROUND_PRESET,
+      backgroundAnimated: false,
       showCompletedDefault: false,
       weekStartsMonday: true,
       archiveDays: 7,
@@ -123,6 +124,7 @@ export const normalizeImportedData = (value: unknown): AppData => {
             ? importedProfile.backgroundPreset
             : DEFAULT_BACKGROUND_PRESET,
         ),
+        backgroundAnimated: importedProfile?.backgroundAnimated === true,
         aiApiKey: pickStoredApiKey(importedProfile),
       }
     : defaults.profile;

@@ -51,6 +51,8 @@ export const BRAND_COLORS = {
   slate: '#64748b',
   lavender: '#b4a7ff',
   idea: '#c084fc',
+  mint: '#00e9c6',
+  coral: '#f95c4b',
 } as const;
 
 export const SURFACE_COLORS = {
@@ -157,22 +159,66 @@ export const ACCENT_PRESETS = [
   { name: 'Уголь', color: '#94a3b8' },
 ] as const;
 
-export const FILL_PRESETS = [
-  { name: 'Бирюзовый', value: BRAND_COLORS.teal },
-  { name: 'Зелёный', value: BRAND_COLORS.emerald },
-  { name: 'Лаймовый', value: BRAND_COLORS.lime },
-  { name: 'Янтарный', value: BRAND_COLORS.amber },
-  { name: 'Оранжевый', value: BRAND_COLORS.orange },
-  { name: 'Розовый', value: BRAND_COLORS.rose },
-  { name: 'Фуксия', value: BRAND_COLORS.fuchsia },
-  { name: 'Фиолетовый', value: BRAND_COLORS.violet },
-  { name: 'Индиго', value: BRAND_COLORS.indigo },
-  { name: 'Синий', value: BRAND_COLORS.blue },
-  { name: 'Голубой', value: BRAND_COLORS.cyan },
-  { name: 'Серый', value: BRAND_COLORS.slate },
-] as const;
+type ColorPreset = { name: string; value: string };
+
+export const FILL_PRESET_GROUPS: readonly { name: string; presets: readonly ColorPreset[] }[] = [
+  {
+    name: 'Вода и небо',
+    presets: [
+      { name: 'Бирюзовый', value: BRAND_COLORS.teal },
+      { name: 'Мятный', value: BRAND_COLORS.mint },
+      { name: 'Морская волна', value: '#4a9ba9' },
+      { name: 'Голубой', value: BRAND_COLORS.cyan },
+      { name: 'Синий', value: BRAND_COLORS.blue },
+      { name: 'Кобальтовый', value: '#5274d6' },
+    ],
+  },
+  {
+    name: 'Природные',
+    presets: [
+      { name: 'Хвойный', value: '#519c7c' },
+      { name: 'Зелёный', value: BRAND_COLORS.emerald },
+      { name: 'Лайм FlowKit', value: BRAND_COLORS.flowkit.toLowerCase() },
+      { name: 'Лаймовый', value: BRAND_COLORS.lime },
+      { name: 'Оливковый', value: '#9da75f' },
+      { name: 'Песочный', value: '#d8bc8d' },
+    ],
+  },
+  {
+    name: 'Тёплые',
+    presets: [
+      { name: 'Янтарный', value: BRAND_COLORS.amber },
+      { name: 'Оранжевый', value: BRAND_COLORS.orange },
+      { name: 'Медный', value: '#b87356' },
+      { name: 'Коралловый', value: BRAND_COLORS.coral },
+      { name: 'Вишнёвый', value: '#bf5270' },
+      { name: 'Розовый', value: BRAND_COLORS.rose },
+    ],
+  },
+  {
+    name: 'Фиолетовые и серые',
+    presets: [
+      { name: 'Фуксия', value: BRAND_COLORS.fuchsia },
+      { name: 'Сливовый', value: '#9b6aab' },
+      { name: 'Фиолетовый', value: BRAND_COLORS.violet },
+      { name: 'Индиго', value: BRAND_COLORS.indigo },
+      { name: 'Серый', value: BRAND_COLORS.slate },
+      { name: 'Серебристый', value: '#aab7c6' },
+    ],
+  },
+];
+
+export const FILL_PRESETS = FILL_PRESET_GROUPS.flatMap(({ presets }) => presets);
 
 export const THEME_PALETTE: string[] = FILL_PRESETS.map((preset) => preset.value);
+
+export const KANBAN_STATUS_PRESETS = [
+  { name: 'Бэклог', value: BRAND_COLORS.slate },
+  { name: 'В работе', value: BRAND_COLORS.mint },
+  { name: 'На неделю', value: BRAND_COLORS.amber },
+  { name: 'Блок', value: BRAND_COLORS.coral },
+  { name: 'Готово', value: BRAND_COLORS.flowkit.toLowerCase() },
+] as const;
 
 export const DEFAULT_PROJECT_COLORS = {
   work: DEFAULT_ACCENT,

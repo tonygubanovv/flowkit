@@ -1,5 +1,5 @@
-﻿import { CSSProperties } from 'react';
-import { ALPHA_COLORS, EFFECTS, FONT_FAMILY, FONT_MONO, T, getFillFallbackColor, readableTextOn } from './Theme';
+import { CSSProperties } from 'react';
+import { ALPHA_COLORS, BRAND_COLORS, EFFECTS, FONT_FAMILY, FONT_MONO, T, getFillFallbackColor, readableTextOn } from './Theme';
 
 type Alpha = string | number;
 
@@ -53,73 +53,127 @@ const buttonBase: CSSProperties = {
   fontFamily,
 };
 
-export type BackgroundPreset = {
+type BackgroundPreset = {
   id: string;
   label: string;
   background: string;
-  startSize: string;
-  startPos: string;
-  midSize: string;
-  midPos: string;
-  endSize: string;
-  endPos: string;
-  duration: string;
-  preview: string;
+  motion?: { size: string; end: string };
 };
 
 export const DEFAULT_BACKGROUND_PRESET = 'flow';
 
+export const boardDotGrid = (color: string) =>
+  `radial-gradient(circle, ${color} 1px, transparent 1.5px) 0 0 / 22px 22px`;
+
+const backdropTint = (color: string, opacity: number) =>
+  `color-mix(in srgb, ${color} ${opacity}%, transparent)`;
+
 export const BACKGROUND_PRESETS: BackgroundPreset[] = [
   {
     id: 'flow',
-    label: 'Поток',
-    background: 'radial-gradient(96rem 74rem at 30% 14%, color-mix(in srgb, var(--accent) 12%, transparent) 0%, color-mix(in srgb, var(--accent) 8%, transparent) 18%, color-mix(in srgb, var(--accent) 4%, transparent) 34%, transparent 74%), radial-gradient(92rem 74rem at 76% 18%, rgba(255,255,255,0.032) 0%, rgba(255,255,255,0.02) 20%, rgba(255,255,255,0.008) 36%, transparent 72%), radial-gradient(102rem 82rem at 48% 82%, color-mix(in srgb, var(--accent) 8%, transparent) 0%, color-mix(in srgb, var(--accent) 5%, transparent) 20%, color-mix(in srgb, var(--accent) 2%, transparent) 38%, transparent 78%), linear-gradient(180deg, var(--bg), var(--bg) 62%)',
-    startSize: '112% 112%, 106% 106%, 118% 118%, 100% 100%',
-    startPos: '10% 8%, 88% 10%, 50% 84%, 0% 0%',
-    midSize: '132% 132%, 120% 120%, 136% 136%, 100% 100%',
-    midPos: '40% 24%, 60% 34%, 24% 62%, 0% 0%',
-    endSize: '114% 114%, 116% 116%, 126% 126%, 100% 100%',
-    endPos: '-10% 34%, 108% 0%, 78% 100%, 0% 0%',
-    duration: '8s',
-    preview: 'radial-gradient(circle at 34% 30%, rgba(62,209,191,0.28), transparent 42%), radial-gradient(circle at 70% 28%, rgba(255,255,255,0.08), transparent 32%), var(--bg)',
+    label: 'Северное сияние',
+    background: [
+      `linear-gradient(145deg, transparent 13% 29%, ${backdropTint(BRAND_COLORS.mint, 8)} 40%, transparent 54%)`,
+      `radial-gradient(ellipse at 90% 4%, ${backdropTint(BRAND_COLORS.violet, 17)}, transparent 62%)`,
+      `radial-gradient(ellipse 57% 62% at 9% 69%, ${backdropTint(BRAND_COLORS.mint, 15)}, transparent 90%)`,
+      'var(--bg)',
+    ].join(', '),
   },
   {
     id: 'orbit',
-    label: 'Орбита',
-    background: 'radial-gradient(88rem 68rem at 50% 14%, color-mix(in srgb, var(--accent) 14%, transparent) 0%, color-mix(in srgb, var(--accent) 8%, transparent) 16%, transparent 72%), radial-gradient(92rem 72rem at 18% 76%, rgba(255,255,255,0.022) 0%, rgba(255,255,255,0.012) 22%, transparent 68%), radial-gradient(90rem 70rem at 82% 72%, color-mix(in srgb, var(--accent) 8%, transparent) 0%, color-mix(in srgb, var(--accent) 4%, transparent) 20%, transparent 66%), linear-gradient(180deg, var(--bg), var(--bg) 68%)',
-    startSize: '106% 106%, 114% 114%, 114% 114%, 100% 100%',
-    startPos: '50% 8%, 16% 82%, 84% 78%, 0% 0%',
-    midSize: '138% 138%, 130% 130%, 130% 130%, 100% 100%',
-    midPos: '50% 24%, 6% 58%, 94% 56%, 0% 0%',
-    endSize: '112% 112%, 120% 120%, 118% 118%, 100% 100%',
-    endPos: '50% 0%, 28% 96%, 72% 92%, 0% 0%',
-    duration: '6.5s',
-    preview: 'radial-gradient(circle at 50% 18%, rgba(62,209,191,0.28), transparent 40%), radial-gradient(circle at 22% 76%, rgba(255,255,255,0.06), transparent 28%), radial-gradient(circle at 80% 72%, rgba(62,209,191,0.16), transparent 30%), var(--bg)',
+    label: 'Чернила',
+    background: [
+      `radial-gradient(ellipse 54% 52% at 92% 66%, ${backdropTint(BRAND_COLORS.mint, 13)} 26%, transparent 88%)`,
+      `radial-gradient(ellipse 53% 54% at 73% 47%, ${backdropTint(BRAND_COLORS.mint, 9)} 26%, transparent 83%)`,
+      'radial-gradient(ellipse 74% 67% at 100% 100%, var(--card-act) 35%, transparent 92%)',
+      'var(--bg)',
+    ].join(', '),
+  },
+  {
+    id: 'horizon',
+    label: 'Горизонт',
+    background: [
+      `radial-gradient(ellipse 80% 54% at 50% 105%, ${backdropTint(BRAND_COLORS.coral, 14)}, transparent 83%)`,
+      'linear-gradient(0deg, var(--card), transparent 52%)',
+      'var(--bg)',
+    ].join(', '),
+  },
+  {
+    id: 'graphite',
+    label: 'Графитовая сетка',
+    background: `${boardDotGrid('var(--border)')}, var(--bg)`,
+  },
+  {
+    id: 'prism',
+    label: 'Призма',
+    background: [
+      `conic-gradient(from 200deg at 84% 18%, transparent 0deg 25deg, ${backdropTint(BRAND_COLORS.coral, 9)} 37deg 51deg, transparent 63deg 76deg, ${backdropTint(BRAND_COLORS.mint, 8)} 89deg 105deg, transparent 119deg)`,
+      'var(--bg)',
+    ].join(', '),
+  },
+  {
+    id: 'silk',
+    label: 'Шёлк',
+    background: [
+      'linear-gradient(110deg, var(--bg), transparent 56%)',
+      `repeating-linear-gradient(128deg, transparent 0% 8%, ${backdropTint(BRAND_COLORS.mint, 8)} 17%, transparent 24% 30%)`,
+      'var(--bg)',
+    ].join(', '),
+  },
+  {
+    id: 'dunes',
+    label: 'Дюны',
+    background: [
+      `radial-gradient(ellipse 83% 66% at -12% 123%, ${backdropTint(BRAND_COLORS.coral, 11)} 71%, transparent 84%)`,
+      'radial-gradient(ellipse 110% 70% at 76% 138%, var(--card-act) 80%, transparent 93%)',
+      'var(--bg)',
+    ].join(', '),
+  },
+  {
+    id: 'depth',
+    label: 'Глубина',
+    background: [
+      `radial-gradient(ellipse 60% 66% at 50% -8%, ${backdropTint(BRAND_COLORS.mint, 12)}, transparent 90%)`,
+      'linear-gradient(180deg, var(--card), transparent 64%)',
+      'var(--bg)',
+    ].join(', '),
+  },
+  {
+    id: 'mist',
+    label: 'Туман',
+    background: [
+      `radial-gradient(ellipse 28% 78% at 16% 30%, ${backdropTint(BRAND_COLORS.flowkit, 10)}, transparent 88%)`,
+      'radial-gradient(ellipse 48% 88% at 96% 36%, var(--card-act), transparent 96%)',
+      'var(--bg)',
+    ].join(', '),
+  },
+  {
+    id: 'mosaic',
+    label: 'Мозаика',
+    background: [
+      'linear-gradient(135deg, transparent 10%, var(--bg) 88%)',
+      `conic-gradient(from 45deg, ${backdropTint(BRAND_COLORS.coral, 10)} 0% 25%, var(--card) 25% 50%, transparent 50% 75%, var(--card) 75%) 0 0 / 52px 52px`,
+      'var(--bg)',
+    ].join(', '),
+    motion: { size: '124% 124%, 52px 52px', end: '100% 100%, 38px 24px' },
   },
   {
     id: 'none',
     label: 'Без фона',
-    background: 'none',
-    startSize: '100% 100%',
-    startPos: '0% 0%',
-    midSize: '100% 100%',
-    midPos: '0% 0%',
-    endSize: '100% 100%',
-    endPos: '0% 0%',
-    duration: '0s',
-    preview: 'var(--bg)',
+    background: 'var(--bg)',
   },
 ];
 
 export const normalizeBackgroundPreset = (presetId?: string | null) =>
   BACKGROUND_PRESETS.some((item) => item.id === presetId) ? String(presetId) : DEFAULT_BACKGROUND_PRESET;
 const pageAmbientBackground = 'var(--page-ambient-bg)';
+const backgroundMotion = (duration: string) => `var(--page-ambient-motion) ${duration} linear infinite alternate`;
+
+export const canAnimateBackground = (presetId: string) => presetId !== 'none' && presetId !== 'graphite';
 
 const pageAmbientShell = (overrides?: CSSProperties): CSSProperties => ({
   background: pageAmbientBackground,
-  backgroundSize: 'var(--page-ambient-size-0)',
-  backgroundPosition: 'var(--page-ambient-pos-0)',
-  animation: 'fk-page-ambient var(--page-ambient-duration) ease-in-out infinite alternate',
+  animation: 'var(--page-ambient-animation, none)',
   ...overrides,
 });
 
@@ -128,16 +182,12 @@ const setRootVar = (name: string, value: string) => {
   document.documentElement.style.setProperty(name, value, 'important');
 };
 
-export const applyBackgroundPreset = (presetId = DEFAULT_BACKGROUND_PRESET) => {
+export const applyBackgroundPreset = (presetId = DEFAULT_BACKGROUND_PRESET, animated = false) => {
   const preset = BACKGROUND_PRESETS.find((item) => item.id === normalizeBackgroundPreset(presetId)) || BACKGROUND_PRESETS[0];
   setRootVar('--page-ambient-bg', preset.background);
-  setRootVar('--page-ambient-size-0', preset.startSize);
-  setRootVar('--page-ambient-pos-0', preset.startPos);
-  setRootVar('--page-ambient-size-50', preset.midSize);
-  setRootVar('--page-ambient-pos-50', preset.midPos);
-  setRootVar('--page-ambient-size-100', preset.endSize);
-  setRootVar('--page-ambient-pos-100', preset.endPos);
-  setRootVar('--page-ambient-duration', preset.duration);
+  setRootVar('--page-ambient-animation', animated && canAnimateBackground(preset.id) ? backgroundMotion('9s') : 'none');
+  setRootVar('--page-ambient-motion-size', preset.motion?.size ?? '124% 124%');
+  setRootVar('--page-ambient-motion-end', preset.motion?.end ?? '100% 100%');
 };
 
 if (typeof document !== 'undefined') {
@@ -2291,7 +2341,7 @@ export const UI = {
 
     presetGrid: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(108px, 1fr))',
       gap: 10,
     } as CSSProperties,
 
@@ -2307,30 +2357,33 @@ export const UI = {
       fontFamily,
     }),
 
-    presetButton: (selected = false): CSSProperties => ({
+    presetButton: (selected: boolean, accent: string): CSSProperties => ({
       display: 'flex',
       flexDirection: 'column',
       gap: 8,
       padding: 8,
       borderRadius: 12,
-      border: `1px solid ${selected ? T.accent : T.border2}`,
-      background: selected ? T.accentDim : String(glass('05', 25).background),
+      '--accent': fillColor(accent),
+      border: `1px solid ${selected ? 'var(--accent)' : T.border2}`,
+      background: selected ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : String(glass('05', 25).background),
       color: T.text,
       cursor: 'pointer',
       textAlign: 'left',
-      transition: 'background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease',
-      boxShadow: selected ? `0 0 0 1px ${T.accentMid}` : 'none',
+      boxShadow: selected ? '0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent)' : 'none',
       fontFamily,
-    }),
+    } as CSSProperties),
 
-    presetPreview: (background: string): CSSProperties => ({
+    presetPreview: (preset: BackgroundPreset, animated: boolean): CSSProperties => ({
       width: '100%',
       aspectRatio: '1.45 / 1',
       borderRadius: 10,
       border: `1px solid ${T.border2}`,
-      background,
+      background: preset.background,
+      animation: animated ? backgroundMotion('5s') : 'none',
+      '--page-ambient-motion-size': preset.motion?.size ?? '132% 132%',
+      '--page-ambient-motion-end': preset.motion?.end ?? '100% 100%',
       boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
-    }),
+    } as CSSProperties),
 
     presetLabel: {
       color: T.text,
@@ -2449,6 +2502,7 @@ export const UI = {
       background: color,
       color: readableTextOn(color),
       boxShadow: `0 10px 24px rgba(0,0,0,.18), 0 0 0 1px ${color}55`,
+      transition: 'none',
     }),
   },
 
@@ -3664,6 +3718,43 @@ export const UI = {
   },
 
   notes: {
+    editorShell: {
+      display: 'flex',
+      flexDirection: 'column',
+      flex: 1,
+      minWidth: 0,
+      minHeight: 0,
+      fontFamily,
+      ...pageAmbientShell(),
+    } as CSSProperties,
+
+    editorScroll: {
+      flex: 1,
+      minHeight: 0,
+      overflow: 'auto',
+      padding: 'clamp(12px, 3vw, 32px)',
+    } as CSSProperties,
+
+    editorHeader: (base: CSSProperties): CSSProperties => ({ ...base, flexWrap: 'wrap' }),
+
+    editorPage: {
+      maxWidth: 1120,
+      margin: '0 auto',
+    } as CSSProperties,
+
+    editorConfirm: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      gap: 12,
+      padding: '10px 24px',
+      background: 'var(--card)',
+      borderBottom: '1px solid var(--border2)',
+      color: 'var(--text)',
+      fontSize: 13,
+    } as CSSProperties,
+
     shell: {
       height: '100%',
       width: '100%',
@@ -3679,7 +3770,8 @@ export const UI = {
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: 16,
-      marginBottom: 18,
+      maxWidth: 1440,
+      margin: '0 auto 18px',
     } as CSSProperties,
 
     topbarTitleWrap: {
@@ -3714,7 +3806,8 @@ export const UI = {
     } as CSSProperties,
 
     listPanel: {
-      maxWidth: 880,
+      maxWidth: 1440,
+      margin: '0 auto',
       borderRadius: 12,
       border: '1px solid var(--border2)',
       background: 'var(--card)',
@@ -5192,13 +5285,6 @@ export const UI = {
 
   kanban: {
     layout: G.kanbanLayout,
-    backgroundFill: pageAmbientShell({
-      position: 'absolute',
-      inset: 0,
-      pointerEvents: 'none',
-      zIndex: 0,
-      backgroundColor: 'var(--bg)',
-    }),
     menuCalendar: {
       width: 260,
       color: 'var(--text)',
@@ -5380,22 +5466,19 @@ export const UI = {
 
 
 export const GLOBAL_STYLES = `
-
+        :root { --page-ambient-motion: fk-page-ambient; }
 
         @keyframes fk-page-ambient {
-          0% {
-            background-position: var(--page-ambient-pos-0);
-            background-size: var(--page-ambient-size-0);
+          from {
+            background-size: var(--page-ambient-motion-size);
+            background-position: 0% 0%;
           }
-          50% {
-            background-position: var(--page-ambient-pos-50);
-            background-size: var(--page-ambient-size-50);
-          }
-          100% {
-            background-position: var(--page-ambient-pos-100);
-            background-size: var(--page-ambient-size-100);
+          to {
+            background-size: var(--page-ambient-motion-size);
+            background-position: var(--page-ambient-motion-end);
           }
         }
+
 
         *, *::before, *::after {
           box-sizing: border-box;
@@ -5548,6 +5631,7 @@ export const GLOBAL_STYLES = `
         }
 
         @media (prefers-reduced-motion: reduce) {
+          :root { --page-ambient-motion: none; }
           .fk-view-transition,
           .fk-modal-backdrop,
           .fk-modal-panel {

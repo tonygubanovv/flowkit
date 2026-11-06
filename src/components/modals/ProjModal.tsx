@@ -1,9 +1,8 @@
 import { APP_STATUS_STYLES } from '../../styles/AppStatusStyles';
 ﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { T } from '../../styles/Theme';
+import { KANBAN_STATUS_PRESETS } from '../../styles/Theme';
 import { UI } from '../../styles/Styles';
 import { genId } from '../../lib/Helpers';
-import { PALETTE } from '../../lib/Constants';
 import { Project } from '../../types/Schemas';
 import { Btn, Icon, SI, FillPicker } from '../ui/UiExports';
 import { innerDesk, innerMob, wrapDesk, wrapMob } from './Shared';
@@ -37,12 +36,15 @@ export function ProjModal({ project, onSave, onClose, isMobile }: ProjModalProps
   };
 
   const addCol = () => {
-    if (!n.trim()) return;
+    const name = n.trim();
+    if (!name) return;
+    const preset = KANBAN_STATUS_PRESETS.find(item => item.name.toLowerCase() === name.toLowerCase());
+    const color = (preset ?? KANBAN_STATUS_PRESETS[0]).value;
     setProj(p => {
       if (!p) return null;
       return { 
         ...p, 
-        columns: [...p.columns, { id: genId(), name: n.trim(), color: PALETTE[p.columns.length % PALETTE.length] }] 
+        columns: [...p.columns, { id: genId(), name, color }]
       };
     });
     setN('');
@@ -68,7 +70,7 @@ export function ProjModal({ project, onSave, onClose, isMobile }: ProjModalProps
               <div key={col.id} style={UI.projectModal.columnCard}>
                 <div style={UI.projectModal.columnRow}>
                   <div style={UI.projectModal.fillEditor}>
-                    <FillPicker value={col.color} onChange={(nextColor) => setProj(p => p ? ({ ...p, columns: p.columns.map(c => c.id === col.id ? { ...c, color: nextColor } : c) }) : null)} compact />
+                    <FillPicker value={col.color} statusPresets={KANBAN_STATUS_PRESETS} onChange={(nextColor) => setProj(p => p ? ({ ...p, columns: p.columns.map(c => c.id === col.id ? { ...c, color: nextColor } : c) }) : null)} compact />
                   </div>
                   <input value={col.name} onChange={e => setProj(p => p ? ({ ...p, columns: p.columns.map(c => c.id === col.id ? { ...c, name: e.target.value } : c) }) : null)} style={UI.projectModal.columnInput} />
                   <button onClick={() => setProj(p => p ? ({ ...p, columns: p.columns.filter(c => c.id !== col.id) }) : null)} className="fk-modal-icon-danger" style={UI.settings.deleteButton}><Icon name="trash" size={16}/></button>

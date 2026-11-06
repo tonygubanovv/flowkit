@@ -9,13 +9,14 @@ interface BtnProps {
   style?: React.CSSProperties;
   title?: string;
   'aria-label'?: string;
+  'aria-pressed'?: boolean;
   disabled?: boolean;
   className?: string;
 }
 
 export function Btn({ children, variant = 'ghost', size = 'md', onClick, style, title, disabled, className, ...rest }: BtnProps) {
   return (
-    <button onClick={onClick} title={title} disabled={disabled} aria-label={rest['aria-label']}
+    <button onClick={onClick} title={title} disabled={disabled} aria-label={rest['aria-label']} aria-pressed={rest['aria-pressed']}
       className={UI.control.buttonClass(variant, className)}
       style={UI.control.button(variant, size, disabled, style)}
     >

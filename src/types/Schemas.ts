@@ -138,6 +138,7 @@ export interface Profile {
   avatarEmoji: string;
   accentColor: string;
   backgroundPreset: string;
+  backgroundAnimated?: boolean;
   showCompletedDefault: boolean;
   weekStartsMonday: boolean;
   archiveDays: number;

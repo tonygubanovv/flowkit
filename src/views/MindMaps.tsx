@@ -231,10 +231,12 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
       {selectedObject && tool === 'select' && <div style={S.selectionBar} role="toolbar" aria-label="Действия с элементом доски">
         <span style={S.selectionCount}>{OBJECT_LABELS[selectedObject.kind]}</span>
         <span style={S.divider} />
-        {MIND_MAP_BRANCH_COLORS.map((item) => <button key={item.value} type="button" title={item.name} aria-label={`Цвет: ${item.name}`}
-          style={S.swatch(item.value, selectedObject.color === item.value)}
-          onClick={() => saveObjects(objects.map((object) => object.id === selectedObject.id
-            ? { ...object, color: object.color === item.value ? undefined : item.value } : object))} />)}
+        <div style={S.swatchRow}>
+          {MIND_MAP_BRANCH_COLORS.map((item) => <button key={item.value} type="button" title={item.name} aria-label={`Цвет: ${item.name}`}
+            style={S.swatch(item.value, selectedObject.color === item.value)}
+            onClick={() => saveObjects(objects.map((object) => object.id === selectedObject.id
+              ? { ...object, color: object.color === item.value ? undefined : item.value } : object))} />)}
+        </div>
         <span style={S.divider} />
         <Btn size="sm" onClick={() => editObject(selectedObject.id)} title="Править текст"><Icon name="edit" size={14} /></Btn>
         <Btn size="sm" onClick={() => removeObject(selectedObject.id)} title="Удалить с доски"><Icon name="trash" size={14} /></Btn>
@@ -250,8 +252,10 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
       {selection.length > 1 && !selectedObject && tool === 'select' && <div style={S.selectionBar} role="toolbar" aria-label="Действия с выделенными ветвями">
         <span style={S.selectionCount}>Выбрано ветвей: {selection.length} · перетащите, чтобы перенести</span>
         <span style={S.divider} />
-        {MIND_MAP_BRANCH_COLORS.map((item) => <button key={item.value} type="button" title={item.name} aria-label={`Цвет ветвей: ${item.name}`}
-          style={S.swatch(item.value, false)} onClick={() => editor.current?.setColor(selection.map((node) => node.id), item.value)} />)}
+        <div style={S.swatchRow}>
+          {MIND_MAP_BRANCH_COLORS.map((item) => <button key={item.value} type="button" title={item.name} aria-label={`Цвет ветвей: ${item.name}`}
+            style={S.swatch(item.value, false)} onClick={() => editor.current?.setColor(selection.map((node) => node.id), item.value)} />)}
+        </div>
         <span style={S.divider} />
         <Btn size="sm" onClick={() => editor.current?.removeNodes(selection.map((node) => node.id))} title="Удалить выбранные ветви"><Icon name="trash" size={14} /></Btn>
         <Btn size="sm" onClick={() => editor.current?.clearSelection()} title="Снять выделение"><Icon name="x" size={14} /></Btn>

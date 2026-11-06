@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_ACCENT, T, isValidFill } from '../../styles/Theme';
-import { BACKGROUND_PRESETS, DEFAULT_BACKGROUND_PRESET, UI, normalizeBackgroundPreset } from '../../styles/Styles';
+import { BACKGROUND_PRESETS, DEFAULT_BACKGROUND_PRESET, UI, canAnimateBackground, normalizeBackgroundPreset } from '../../styles/Styles';
 import { genId, relDate, dateStatus, extractSmartDate, buildHK, formatHK } from '../../lib/Helpers';
 import { PALETTE, AVATAR_EMOJIS } from '../../lib/Constants';
 import { typographize } from '../../lib/Typograf';
@@ -35,6 +35,8 @@ export function SettingsModal({ data, onSave, onClose, onExport, onImport, isMob
   };
   const accentPreview = isValidFill(profile.accentColor) ? profile.accentColor.trim() : DEFAULT_ACCENT;
   const canSave = isValidFill(profile.accentColor);
+  const supportsMotion = canAnimateBackground(profile.backgroundPreset);
+  const backgroundAnimated = supportsMotion && profile.backgroundAnimated === true;
 
   useEffect(() => {
     if (!recordingKey) return;
@@ -80,18 +82,25 @@ export function SettingsModal({ data, onSave, onClose, onExport, onImport, isMob
               <div><div style={UI.settings.label()}>АВАТАР</div><div style={UI.settings.avatarGrid}>{AVATAR_EMOJIS.map(e => <button key={e} onClick={() => setProfile({...profile, avatarEmoji: e})} className="fk-settings-avatar" style={UI.settings.avatarButton(profile.avatarEmoji === e)}>{e}</button>)}</div></div>
               <div><div style={UI.settings.label(8)}>ИМЯ</div><input value={profile.name} onChange={e => setProfile({...profile, name: e.target.value})} placeholder="Твое имя?" style={SI(UI.settings.textInput)} /></div>
               <div><div style={UI.settings.label()}>ЦВЕТ</div><FillPicker value={profile.accentColor} onChange={(v:string) => setProfile({...profile, accentColor: v})} /></div>
-              <div>
+              <div style={UI.settings.stack(10)}>
                 <div style={UI.settings.label()}>ФОН</div>
+                <div role="group" aria-label="Режим фона" style={UI.modal.actions()}>
+                  <Btn size="sm" variant={backgroundAnimated ? 'ghost' : 'subtle'} aria-pressed={!backgroundAnimated}
+                    onClick={() => setProfile({ ...profile, backgroundAnimated: false })}>Статичный</Btn>
+                  <Btn size="sm" variant={backgroundAnimated ? 'subtle' : 'ghost'} aria-pressed={backgroundAnimated}
+                    disabled={!supportsMotion} onClick={() => setProfile({ ...profile, backgroundAnimated: true })}>Анимированный</Btn>
+                </div>
                 <div style={UI.settings.presetGrid}>
                   {BACKGROUND_PRESETS.map((preset) => (
                     <button
                       key={preset.id}
                       type="button"
+                      aria-pressed={profile.backgroundPreset === preset.id}
                       onClick={() => setProfile({ ...profile, backgroundPreset: preset.id })}
                       className="fk-hover-subtle"
-                      style={UI.settings.presetButton(profile.backgroundPreset === preset.id)}
+                      style={UI.settings.presetButton(profile.backgroundPreset === preset.id, accentPreview)}
                     >
-                      <span style={UI.settings.presetPreview(preset.preview)} />
+                      <span style={UI.settings.presetPreview(preset, backgroundAnimated && profile.backgroundPreset === preset.id)} />
                       <span style={UI.settings.presetLabel}>{preset.label}</span>
                     </button>
                   ))}

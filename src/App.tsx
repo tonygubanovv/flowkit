@@ -40,6 +40,7 @@ import { Btn, ContextMenu, Icon, Toast, playTaskDeleteSound, playTaskSaveSound }
 import { Sidebar } from './components/Sidebar';
 import { defaultFilters, FilterMenu, FilterState } from './components/FilterBar';
 import { AiChatWidget } from './components/AiChatWidget';
+import type { NoteEditorHandle } from './views/NoteEditor';
 
 const STORAGE_VIEW_KEY = 'flowkit-view';
 const STORAGE_KANBAN_KEY = 'flowkit-last-project';
@@ -54,7 +55,7 @@ const NotesView = lazy(() => import('./views/Notes').then((module) => ({ default
 const MindMapsView = lazy(() => import('./views/MindMaps').then((module) => ({ default: module.MindMapsView })));
 
 const TaskModal = lazy(() => import('./components/modals/TaskModal').then((module) => ({ default: module.TaskModal })));
-const NoteModal = lazy(() => import('./components/modals/NoteModal').then((module) => ({ default: module.NoteModal })));
+const NoteEditor = lazy(() => import('./views/NoteEditor').then((module) => ({ default: module.NoteEditor })));
 const ProjModal = lazy(() => import('./components/modals/ProjModal').then((module) => ({ default: module.ProjModal })));
 const SettingsModal = lazy(() => import('./components/modals/SettingsModal').then((module) => ({ default: module.SettingsModal })));
 const SearchModal = lazy(() => import('./components/modals/SearchModal').then((module) => ({ default: module.SearchModal })));
@@ -266,7 +267,8 @@ export default function App() {
 
   const [projectModal, setProjectModal] = useState<Project | null>(null);
   const [taskModal, setTaskModal] = useState<{ task: Task; isNew: boolean } | null>(null);
-  const [noteModal, setNoteModal] = useState<{ note: Note; isNew: boolean } | null>(null);
+  const [noteEditor, setNoteEditor] = useState<{ note: Note; isNew: boolean } | null>(null);
+  const noteEditorRef = useRef<NoteEditorHandle>(null);
   const [selectedMindMapId, setSelectedMindMapId] = useState<string | null>(null);
 
   const [taskContextMenu, setTaskContextMenu] = useState<TaskContextMenu | null>(null);
@@ -302,12 +304,21 @@ export default function App() {
     }
   }, [activeProject?.id]);
 
+  const navigateToView = useCallback((view: string) => {
+    if (noteEditorRef.current) {
+      noteEditorRef.current.requestClose(() => setActiveView(view));
+      return;
+    }
+    setNoteEditor(null);
+    setActiveView(view);
+  }, []);
+
   const navigateFromSidebar = (view: string) => {
-    if (view !== 'kanban') { setActiveView(view); return; }
+    if (view !== 'kanban') { navigateToView(view); return; }
     const remembered = data.projects.find((project) => project.id === lastKanbanProjectId.current);
     const firstId = data.projectsOrder.find((id) => data.projects.some((project) => project.id === id));
     const projectId = activeProject?.id ?? remembered?.id ?? firstId ?? data.projects[0]?.id;
-    if (projectId) setActiveView(projectId);
+    if (projectId) navigateToView(projectId);
   };
 
   const isGlobalView = GLOBAL_VIEWS.includes(activeView);
@@ -323,13 +334,14 @@ export default function App() {
 
   const themeAccent = data.profile?.accentColor || DEFAULT_ACCENT;
   const backgroundPreset = normalizeBackgroundPreset(data.profile?.backgroundPreset || DEFAULT_BACKGROUND_PRESET);
+  const backgroundAnimated = data.profile?.backgroundAnimated === true;
 
   useLayoutEffect(() => {
     if (isLoading) return;
     updateTheme(themeAccent);
-    applyBackgroundPreset(backgroundPreset);
+    applyBackgroundPreset(backgroundPreset, backgroundAnimated);
     setThemeVersion((current) => current + 1);
-  }, [backgroundPreset, themeAccent, isLoading]);
+  }, [backgroundPreset, backgroundAnimated, themeAccent, isLoading]);
 
   useEffect(() => {
     let mounted = true;
@@ -417,13 +429,13 @@ export default function App() {
 
       if (hotkey === hotkeys.today) {
         event.preventDefault();
-        setActiveView('today');
+        navigateToView('today');
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [data.hotkeys, openNewTask]);
+  }, [data.hotkeys, openNewTask, navigateToView]);
 
   const filteredTasks = useMemo(() => {
     return getVisibleTasks({
@@ -488,13 +500,13 @@ export default function App() {
   const saveNote = useCallback((note: Note) => {
     setData((current) => upsertNote(current, note));
 
-    setNoteModal(null);
+    setNoteEditor(null);
   }, []);
 
   const deleteNote = useCallback((id: ID) => {
     setData((current) => removeNote(current, id));
 
-    setNoteModal(null);
+    setNoteEditor(null);
   }, []);
 
   const reorderNotes = useCallback((dragId: ID, targetId: ID, side: 'before' | 'after') => {
@@ -558,7 +570,7 @@ export default function App() {
   }, []);
 
   const openNewNote = useCallback(() => {
-    setNoteModal({
+    setNoteEditor({
       isNew: true,
       note: {
         id: genId(),
@@ -605,7 +617,7 @@ export default function App() {
         await persistAppData(importedData);
         setData(importedData);
         updateTheme(importedData.profile.accentColor);
-        applyBackgroundPreset(normalizeBackgroundPreset(importedData.profile.backgroundPreset || DEFAULT_BACKGROUND_PRESET));
+        applyBackgroundPreset(importedData.profile.backgroundPreset, importedData.profile.backgroundAnimated);
         setShowDone(importedData.profile.showCompletedDefault);
         setActiveView((currentView) => {
           if (GLOBAL_VIEWS.includes(currentView) || importedData.projects.some((project) => project.id === currentView)) {
@@ -682,7 +694,7 @@ export default function App() {
   }, [data.projects, saveTask]);
 
   const openNote = (note: Note) => {
-    setNoteModal({ note, isNew: false });
+    setNoteEditor({ note, isNew: false });
   };
 
   const titles: Record<string, string> = {
@@ -729,7 +741,7 @@ export default function App() {
 
       <div style={UI.app.content(isMobile)}>
         {saveError && <StorageNotice onRetry={() => setSaveAttempt((attempt) => attempt + 1)} onExport={exportData} />}
-        <header style={UI.app.header(isMobile)}>
+        {!noteEditor && <header style={UI.app.header(isMobile)}>
           <div style={UI.app.titleArea}>
             {isMobile && (
               <button
@@ -787,11 +799,21 @@ export default function App() {
               {!isMobile && (isNotesView ? 'Заметка' : isMindMapsView ? 'Доска' : 'Задача')}
             </Btn>
           </div>
-        </header>
+        </header>}
 
-        <main key={activeView} style={UI.app.main}>
+        <main key={noteEditor ? 'note-editor' : activeView} style={UI.app.main}>
           <Suspense fallback={<AppStatus title="Загрузка раздела…" embedded />}>
-            {isMindMapsView ? (
+            {noteEditor ? (
+              <NoteEditor
+                key={noteEditor.note.id}
+                ref={noteEditorRef}
+                note={noteEditor.note}
+                isNew={noteEditor.isNew}
+                onSave={saveNote}
+                onDelete={deleteNote}
+                onClose={() => setNoteEditor(null)}
+              />
+            ) : isMindMapsView ? (
               <MindMapsView maps={data.mindMaps || []} selectedId={selectedMindMapId} projectFilter={filterProjectId}
                 tasks={data.tasks} notes={data.notes} projects={data.projects} onSelect={setSelectedMindMapId}
                 onCreate={openNewMindMap} onSave={(map) => setData((current) => upsertMindMap(current, map))}
@@ -888,17 +910,6 @@ export default function App() {
               setTaskModal({ task: { ...linkedTask, priority: normalizeTaskPriority(linkedTask.priority) }, isNew: false });
             }}
             onClose={() => setTaskModal(null)}
-            isMobile={isMobile}
-          />
-        )}
-
-        {noteModal && (
-          <NoteModal
-            note={noteModal.note}
-            isNew={noteModal.isNew}
-            onSave={saveNote}
-            onDelete={deleteNote}
-            onClose={() => setNoteModal(null)}
             isMobile={isMobile}
           />
         )}

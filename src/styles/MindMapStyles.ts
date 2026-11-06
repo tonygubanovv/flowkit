@@ -1,21 +1,14 @@
 import { CSSProperties } from 'react';
 import type { Theme } from 'mind-elixir';
 import { MIND_MAP_COMMENT_WIDTH } from '../lib/MindMaps';
-import { UI } from './Styles';
-import { BRAND_COLORS, FONT_FAMILY } from './Theme';
+import { UI, boardDotGrid } from './Styles';
+import { BRAND_COLORS, FILL_PRESETS, FONT_FAMILY } from './Theme';
 
-export const MIND_MAP_BRANCH_COLORS = [
-  { name: 'Бирюзовый', value: BRAND_COLORS.teal },
-  { name: 'Синий', value: BRAND_COLORS.blue },
-  { name: 'Фиолетовый', value: BRAND_COLORS.violet },
-  { name: 'Янтарный', value: BRAND_COLORS.amber },
-  { name: 'Розовый', value: BRAND_COLORS.rose },
-  { name: 'Зелёный', value: BRAND_COLORS.emerald },
-] as const;
+export const MIND_MAP_BRANCH_COLORS = FILL_PRESETS;
 
 export const MIND_MAP_THEME: Theme = {
   name: 'FlowKit', type: 'dark',
-  palette: MIND_MAP_BRANCH_COLORS.map((item) => item.value),
+  palette: [BRAND_COLORS.teal, BRAND_COLORS.blue, BRAND_COLORS.violet, BRAND_COLORS.amber, BRAND_COLORS.rose, BRAND_COLORS.emerald],
   cssVar: {
     '--bgcolor': 'var(--bg)', '--color': 'var(--text2)', '--main-color': 'var(--text)',
     '--main-bgcolor': 'var(--card)', '--main-bgcolor-transparent': 'var(--card)',
@@ -41,9 +34,9 @@ export const MIND_MAP_STYLES = {
     padding: 16, display: 'flex', flexDirection: 'column', gap: 14, animation: 'none' }),
   spacer: { marginLeft: 'auto' } as CSSProperties,
   colorPopup: (x: number, y: number): CSSProperties => ({ ...UI.modal.popover({}), position: 'fixed',
-    left: `clamp(16px, ${x}px, calc(100vw - 262px))`, top: `clamp(72px, ${y}px, calc(100dvh - 160px))`,
+    left: `clamp(16px, ${x}px, calc(100vw - 262px))`, top: `clamp(72px, ${y}px, calc(100dvh - 246px))`,
     width: 246, zIndex: 1500, padding: 12, display: 'flex', flexDirection: 'column', gap: 10, animation: 'none' }),
-  swatchRow: { display: 'flex', alignItems: 'center', gap: 8 } as CSSProperties,
+  swatchRow: { display: 'grid', gridTemplateColumns: 'repeat(6, 24px)', gap: 6 } as CSSProperties,
   swatch: (color: string, active: boolean): CSSProperties => ({
     width: 24, height: 24, borderRadius: '50%', background: color, flexShrink: 0,
     border: active ? '2px solid var(--text)' : '2px solid var(--border)',
@@ -54,8 +47,8 @@ export const MIND_MAP_STYLES = {
   canvas: { position: 'relative', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' } as CSSProperties,
   canvasControls: { position: 'absolute', right: 16, bottom: 14, display: 'flex', alignItems: 'center', gap: 2, padding: 3, borderRadius: 8, background: 'var(--card)', border: '1px solid var(--border)', zIndex: 12 } as CSSProperties,
   zoom: { minWidth: 42, textAlign: 'center', color: 'var(--text2)', fontSize: 11, fontVariantNumeric: 'tabular-nums' } as CSSProperties,
-  selectionBar: { position: 'absolute', left: '50%', bottom: 14, transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 9, padding: '5px 6px 5px 12px', borderRadius: 8, background: 'var(--card)', border: '1px solid var(--border)', zIndex: 12 } as CSSProperties,
-  selectionCount: { color: 'var(--text2)', fontSize: 12, whiteSpace: 'nowrap' } as CSSProperties,
+  selectionBar: { position: 'absolute', left: '50%', bottom: 14, transform: 'translateX(-50%)', display: 'flex', flexWrap: 'wrap', width: 'max-content', maxWidth: 'calc(100% - 24px)', alignItems: 'center', gap: 9, padding: '5px 6px 5px 12px', borderRadius: 8, background: 'var(--card)', border: '1px solid var(--border)', zIndex: 12 } as CSSProperties,
+  selectionCount: { color: 'var(--text2)', fontSize: 12 } as CSSProperties,
   divider: { width: 1, height: 20, background: 'var(--border)', flexShrink: 0 } as CSSProperties,
   notice: { position: 'absolute', left: '50%', bottom: 56, transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 8, maxWidth: 380, padding: '7px 8px 7px 12px', borderRadius: 8, background: 'var(--card)', border: '1px solid var(--danger)', color: 'var(--text)', fontSize: 12, zIndex: 12 } as CSSProperties,
   host: { width: '100%', height: '100%', position: 'absolute', inset: 0 } as CSSProperties,
@@ -88,7 +81,7 @@ export const MIND_MAP_CSS = `
 .fk-mind-map #input-box { font-family: var(--font-family) !important; }
 /* Точечная плоскость внутри .map-canvas: движок сам двигает и масштабирует этот слой, поэтому точки едут за доской. */
 .fk-mind-map .map-canvas::before { content: ''; position: absolute; left: -2000px; top: -2000px; right: -2000px; bottom: -2000px;
-  background-image: radial-gradient(circle, var(--border) 1px, transparent 1.5px); background-size: 22px 22px; pointer-events: none; }
+  background: ${boardDotGrid('var(--border)')}; pointer-events: none; }
 .fk-mind-map me-root me-tpc { font-size: 19px; font-weight: 600; }
 .fk-mind-map me-tpc { font-size: 13px; box-shadow: none; }
 .fk-mind-map me-tpc { cursor: pointer; }

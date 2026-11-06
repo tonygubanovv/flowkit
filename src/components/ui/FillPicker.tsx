@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useState } from 'react';
-import { FILL_PRESETS, isValidFill, normalizeHexColor } from '../../styles/Theme';
+import { FILL_PRESET_GROUPS, isValidFill, normalizeHexColor } from '../../styles/Theme';
 import { COLOR_PICKER_STYLES as styles } from '../../styles/ColorPickerStyles';
 import { Icon } from './Icon';
 
@@ -7,9 +7,10 @@ interface FillPickerProps {
   value: string;
   onChange: (color: string) => void;
   compact?: boolean;
+  statusPresets?: readonly { name: string; value: string }[];
 }
 
-export function FillPicker({ value, onChange, compact = false }: FillPickerProps) {
+export function FillPicker({ value, onChange, compact = false, statusPresets }: FillPickerProps) {
   const [draft, setDraft] = useState(value);
   const [error, setError] = useState(false);
   const id = useId();
@@ -20,18 +21,36 @@ export function FillPicker({ value, onChange, compact = false }: FillPickerProps
     else if (draft.trim() === value.trim() && isValidFill(value)) setError(false);
     else setError(true);
   };
-  return (
-    <div style={styles.shell(compact)}>
-      <div role="group" aria-label="Палитра: 12 цветов" style={styles.grid}>
-        {FILL_PRESETS.map((preset) => {
-          const selected = normalizeHexColor(value) === preset.value;
+  const selectedColor = normalizeHexColor(value);
+  const palette = (name: string, presets: readonly { name: string; value: string }[]) => (
+    <div key={name} role="group" aria-label={name} style={styles.group}>
+      <span style={styles.label}>{name}</span>
+      <div style={styles.grid}>
+        {presets.map((preset) => {
+          const selected = selectedColor === preset.value;
           return <button key={preset.value} type="button" title={preset.name} aria-label={preset.name}
-            aria-pressed={selected} className="fk-color-swatch" style={styles.swatch(preset.value, selected)}
+            aria-pressed={selected} className="fk-color-swatch" style={styles.swatch(preset.value, selected, compact)}
             onClick={() => { setDraft(preset.value); setError(false); onChange(preset.value); }}>
             {selected && <Icon name="check" size={15} />}
           </button>;
         })}
       </div>
+    </div>
+  );
+  const generalPalette = FILL_PRESET_GROUPS.map(({ name, presets }) =>
+    palette(name, presets.filter((item) => !statusPresets?.some((status) => status.value === item.value))));
+
+  return (
+    <div style={styles.shell(compact)}>
+      {statusPresets ? (
+        <>
+          {palette('Цвета статусов', statusPresets)}
+          <details>
+            <summary style={styles.more}>Все цвета</summary>
+            <div style={styles.moreGroups}>{generalPalette}</div>
+          </details>
+        </>
+      ) : generalPalette}
       <label htmlFor={id} style={styles.label}>Свой цвет</label>
       <div style={styles.inputRow}>
         <span style={styles.preview(value)} title="Текущий цвет" aria-hidden="true" />
