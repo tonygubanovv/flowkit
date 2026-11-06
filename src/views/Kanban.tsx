@@ -156,6 +156,7 @@ export function KanbanView({
   const [draggedCardHeight, setDraggedCardHeight] = useState(84);
   const [dropTarget, setDropTarget] = useState<{ id: ID; side: 'top' | 'bottom' } | null>(null);
   const [dropCol, setDropCol] = useState<ID | null>(null);
+  const dragSourceRef = useRef<{ id: ID; timer: number } | null>(null);
 
   const setColumnScrollerRef = (node: HTMLDivElement | null) => {
     if (!node || animatedScrollersRef.current.has(node)) return;
@@ -177,6 +178,21 @@ export function KanbanView({
       scroller: null,
       speed: 0,
     };
+  };
+
+  useLayoutEffect(() => () => {
+    window.clearTimeout(dragSourceRef.current?.timer);
+    stopDragAutoScroll();
+  }, []);
+
+  const finishDrag = () => {
+    window.clearTimeout(dragSourceRef.current?.timer);
+    dragSourceRef.current = null;
+    stopDragAutoScroll();
+    setDraggedId(null);
+    setDraggedCardHeight(84);
+    setDropTarget(null);
+    setDropCol(null);
   };
 
   const runDragAutoScroll = () => {
@@ -323,8 +339,6 @@ export function KanbanView({
         setShowPriority(false);
       }}
     >
-      <div aria-hidden="true" style={UI.kanban.backgroundFill} />
-
       <style>{`
         @keyframes menuShow {
           from {
@@ -364,6 +378,8 @@ export function KanbanView({
         }
 
         .task-drag-hidden {
+          position: absolute;
+          opacity: 0;
           pointer-events: none;
         }
       `}</style>
@@ -386,27 +402,27 @@ export function KanbanView({
             key={col.id}
             style={UI.kanban.column}
             onDragOver={(event) => {
+              if (!dragSourceRef.current) return;
               event.preventDefault();
               updateDragAutoScroll(event);
+              if (dropTarget !== null || dropCol !== col.id) {
+                setDropTarget(null);
+                setDropCol(col.id);
+              }
             }}
             onDrop={(event) => {
+              const dragId = dragSourceRef.current?.id;
+              if (!dragId) return;
               event.preventDefault();
+              playTaskDropSound();
 
-              if (draggedId) {
-                playTaskDropSound();
-
-                if (dropTarget) {
-                  onReorder(draggedId, dropTarget.id, dropTarget.side, col.id);
-                } else {
-                  onMoveToCol(draggedId, col.id);
-                }
+              if (dropCol === col.id && dropTarget) {
+                onReorder(dragId, dropTarget.id, dropTarget.side, col.id);
+              } else {
+                onMoveToCol(dragId, col.id);
               }
 
-              stopDragAutoScroll();
-              setDraggedId(null);
-              setDraggedCardHeight(84);
-              setDropTarget(null);
-              setDropCol(null);
+              finishDrag();
             }}
           >
             <div
@@ -433,10 +449,6 @@ export function KanbanView({
               data-kanban-scroller="true"
               ref={setColumnScrollerRef}
               style={UI.kanban.columnScroller}
-              onDragOver={(event) => {
-                event.preventDefault();
-                updateDragAutoScroll(event);
-              }}
               onWheel={(event) => {
                 if (!draggedId) return;
                 event.currentTarget.scrollTop += event.deltaY;
@@ -445,8 +457,6 @@ export function KanbanView({
               {colTasks.map((task) => {
                 const isDraggedCard = draggedId === task.id;
                 const isTarget = isColActive && dropTarget?.id === task.id;
-
-                if (isDraggedCard) return null;
 
                 return (
                   <React.Fragment key={task.id}>
@@ -469,27 +479,24 @@ export function KanbanView({
                       className={isDraggedCard ? 'task-drag-hidden' : ''}
                       draggable
                       onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = 'move';
+                        event.dataTransfer.setData('text/plain', task.id);
                         playTaskDragStartSound();
                         setDraggedCardHeight(Math.max(72, Math.round(event.currentTarget.getBoundingClientRect().height)));
-                        setTimeout(() => {
+                        // Keep the source mounted and let the browser capture its drag image first.
+                        const timer = window.setTimeout(() => {
                           setDraggedId(task.id);
-                          setDropCol(col.id);
-                          setDropTarget(null);
                         }, 0);
-                      }}
-                      onDragEnd={() => {
-                        stopDragAutoScroll();
-                        setDraggedId(null);
-                        setDraggedCardHeight(84);
+                        dragSourceRef.current = { id: task.id, timer };
+                        setDropCol(col.id);
                         setDropTarget(null);
-                        setDropCol(null);
                       }}
+                      onDragEnd={finishDrag}
                       onDragOver={(event) => {
+                        if (!dragSourceRef.current || dragSourceRef.current.id === task.id) return;
                         event.preventDefault();
                         event.stopPropagation();
                         updateDragAutoScroll(event);
-
-                        if (isDraggedCard) return;
 
                         const rect = event.currentTarget.getBoundingClientRect();
                         const side = event.clientY < rect.top + rect.height / 2 ? 'top' : 'bottom';
@@ -557,19 +564,7 @@ export function KanbanView({
                 />
               )}
 
-              <div
-                style={UI.kanban.dropFiller}
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  updateDragAutoScroll(event);
-
-                  if (dropTarget !== null || dropCol !== col.id) {
-                    setDropTarget(null);
-                    setDropCol(col.id);
-                  }
-                }}
-              />
+              <div style={UI.kanban.dropFiller} />
             </div>
           </div>
         );
