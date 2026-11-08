@@ -3,6 +3,7 @@ import type { MindElixirData, NodeObj } from 'mind-elixir';
 import { MindMap, MindMapObject, Note, Project, Task } from '../types/Schemas';
 import { getMindMapBytes, getMindMapMeta, mindMapToMarkdown, walkMindMap } from '../lib/MindMaps';
 import { genId } from '../lib/Helpers';
+import { BoardSnapshot, createBoardHistory, recordBoardChange, undoBoardChange, redoBoardChange } from '../lib/MindMapHistory';
 import { isDoneTask } from '../lib/TaskDomain';
 import { downloadMindMapFile, mindMapPngBlob, mindMapSvgBlob } from '../data/MindMapFiles';
 import { Btn, ContextMenu, Icon } from '../components/ui/UiExports';
@@ -28,17 +29,16 @@ interface Props {
 }
 
 const OBJECT_LABELS: Record<MindMapObject['kind'], string> = { text: 'Текст', shape: 'Фигура', comment: 'Комментарий' };
-const OBJECT_HISTORY_LIMIT = 40;
 const NO_OBJECTS: MindMapObject[] = [];
 
 function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
   const editor = useRef<MindMapEditorHandle>(null);
   const pointer = useRef<{ x: number; y: number } | null>(null);
   const clipboard = useRef<MindMapObject | null>(null);
-  const past = useRef<MindMapObject[][]>([]);
-  const future = useRef<MindMapObject[][]>([]);
-  const applying = useRef(false);
-  const lastEdit = useRef<'nodes' | 'objects'>('nodes');
+  const history = useRef(createBoardHistory({ data: map.data, objects: map.objects || NO_OBJECTS }));
+  const mapRef = useRef(map);
+  mapRef.current = map;
+  const [historyState, setHistoryState] = useState({ undo: false, redo: false });
   const [node, setNode] = useState<NodeObj | null>(null);
   const [action, setAction] = useState<{ kind: MindMapNodeAction; x: number; y: number } | null>(null);
   const [renaming, setRenaming] = useState(false);
@@ -51,40 +51,43 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
   const [objectId, setObjectId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [more, setMore] = useState(false);
+  const [showColors, setShowColors] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const objects = map.objects || NO_OBJECTS;
   const selectedObject = objects.find((item) => item.id === objectId) || null;
   const usedBytes = useMemo(() => getMindMapBytes(map.data), [map.data]);
-  const saveData = (data: MindElixirData) => { lastEdit.current = 'nodes'; props.onSave({ ...map, data, updatedAt: new Date().toISOString() }); };
-  const writeObjects = (next: MindMapObject[]) => props.onSave({ ...map, objects: next, updatedAt: new Date().toISOString() });
+  const persistSnapshot = (snapshot: BoardSnapshot) => {
+    const next = { ...mapRef.current, ...snapshot, updatedAt: new Date().toISOString() };
+    mapRef.current = next;
+    props.onSave(next);
+    setHistoryState({ undo: history.current.past.length > 0, redo: history.current.future.length > 0 });
+  };
+  const saveSnapshot = (snapshot: BoardSnapshot) => {
+    const next = recordBoardChange(history.current, snapshot);
+    if (next === history.current) return;
+    history.current = next;
+    persistSnapshot(next.present);
+  };
+  const saveData = (data: MindElixirData) => saveSnapshot({ ...history.current.present, data });
   const saveObjects = (next: MindMapObject[]) => {
-    if (!applying.current) {
-      lastEdit.current = 'objects';
-      future.current = [];
-      past.current.push(objects);
-      if (past.current.length > OBJECT_HISTORY_LIMIT) past.current.shift();
-    }
-    writeObjects(next);
+    editor.current?.flush();
+    saveSnapshot({ ...history.current.present, objects: next });
   };
-  const undoObjects = () => {
-    const previous = past.current.pop();
-    if (!previous) return false;
-    future.current.push(objects);
-    applying.current = true;
-    writeObjects(previous);
-    applying.current = false;
-    return true;
+  const travelHistory = (redo: boolean) => {
+    editor.current?.flush();
+    const next = redo ? redoBoardChange(history.current) : undoBoardChange(history.current);
+    if (next === history.current) return;
+    const dataChanged = next.present.data !== history.current.present.data;
+    history.current = next;
+    setEditingId(null);
+    setObjectId(null);
+    setAction(null);
+    if (dataChanged) editor.current?.replaceData(next.present.data);
+    persistSnapshot(next.present);
+    editor.current?.focus();
   };
-  const redoObjects = () => {
-    const next = future.current.pop();
-    if (!next) return false;
-    past.current.push(objects);
-    applying.current = true;
-    writeObjects(next);
-    applying.current = false;
-    return true;
-  };
-  const runUndo = () => { if (lastEdit.current === 'objects' && past.current.length) undoObjects(); else editor.current?.undo(); };
-  const runRedo = () => { if (lastEdit.current === 'objects' && future.current.length) redoObjects(); else editor.current?.redo(); };
+  const runUndo = () => travelHistory(false);
+  const runRedo = () => travelHistory(true);
   const pasteObject = (source: MindMapObject) => {
     const canvas = pointer.current ? editor.current?.toCanvas(pointer.current.x, pointer.current.y) : null;
     const copy: MindMapObject = { ...source, id: genId(), x: canvas?.x ?? source.x + 24, y: canvas?.y ?? source.y + 24 };
@@ -124,10 +127,9 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
 
   const canvasHost = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    past.current = [];
-    future.current = [];
-    lastEdit.current = 'nodes';
-  }, [map.id]);
+    setMore(false);
+    setShowColors(false);
+  }, [objectId, node?.id, selection.length, tool]);
 
   useEffect(() => {
     const host = canvasHost.current;
@@ -135,9 +137,26 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
     // Захват, а не всплытие: слои ниже (полотно движка, слой объектов) глушат клавиши, а Ctrl+Z движок слушает сам.
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
-      if (target?.closest('input, textarea, [contenteditable="true"]')) return;
-      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
-      const key = event.key.toLowerCase();
+      if (event.isComposing || target?.closest('input, textarea, [contenteditable]:not([contenteditable="false"]), [role="dialog"]')) return;
+      if (target?.closest('button, a, select')) return;
+      if (event.key === 'Escape') {
+        setTool('select'); setShowHelp(false); setShowColors(false); setMore(false); setAction(null);
+        setObjectId(null); editor.current?.clearSelection();
+        return;
+      }
+      if (!(event.ctrlKey || event.metaKey)) {
+        if (event.altKey || event.shiftKey) return;
+        const nextTool = { KeyT: 'text', KeyR: 'rect', KeyC: 'comment' }[event.code] as MindMapTool | undefined;
+        if (nextTool) {
+          event.preventDefault(); event.stopPropagation();
+          setTool((current) => current === nextTool ? 'select' : nextTool);
+        } else if (event.key === 'F2' && selectedObject) {
+          event.preventDefault(); event.stopPropagation(); editObject(selectedObject.id);
+        }
+        return;
+      }
+      if (event.altKey) return;
+      const key = ({ KeyZ: 'z', KeyY: 'y', KeyC: 'c', KeyX: 'x', KeyV: 'v', KeyD: 'd' }[event.code] || event.key).toLowerCase();
       if (key === 'z' || key === 'y') {
         event.preventDefault();
         event.stopPropagation();
@@ -149,6 +168,8 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
         event.stopPropagation();
         clipboard.current = selectedObject;
         if (key === 'x') removeObject(selectedObject.id);
+      } else if (key === 'd' && selectedObject) {
+        event.preventDefault(); event.stopPropagation(); duplicateObject(selectedObject);
       } else if (key === 'v' && clipboard.current) {
         event.preventDefault();
         event.stopPropagation();
@@ -196,16 +217,16 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
         onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); if (event.key === 'Escape') { setTitle(map.title); setRenaming(false); } }} style={S.title} /> :
         <CustomDropdown value={map.id} placeholder="Выбрать доску" options={props.maps.map((item) => ({ id: item.id, name: item.title }))} onChange={(id: string) => props.onSelect(id)} />}
       <div style={S.toolGroup} role="toolbar" aria-label="Инструменты доски">
-        {MIND_MAP_TOOLS.map((item) => <Btn key={item.id} size="sm" title={item.label} aria-label={item.label}
-          onClick={() => setTool((current) => current === item.id ? 'select' : item.id)}
-          style={tool === item.id ? { background: 'var(--accent-dim)', color: 'var(--accent)' } : undefined}>
-          <Icon name={item.icon} size={15} />
+        {MIND_MAP_TOOLS.map((item) => <Btn key={item.id} size="sm" title={`${item.label} · ${{ text: 'T', rect: 'R', comment: 'C', select: '' }[item.id]}`} aria-label={item.label} aria-pressed={tool === item.id}
+          onClick={() => { setTool((current) => current === item.id ? 'select' : item.id); editor.current?.focus(); }}
+          style={tool === item.id ? S.activeTool : undefined}>
+          <Icon name={item.icon} size={15} /><span>{item.label}</span>
         </Btn>)}
       </div>
       <span style={S.divider} />
-      <Btn size="sm" onClick={() => editor.current?.addNode()} title="Добавить ветвь" aria-label="Добавить ветвь"><Icon name="plus" size={15} /></Btn>
-      <Btn size="sm" onClick={runUndo} title="Отменить · Ctrl+Z"><Icon name="undo" size={15} /></Btn>
-      <Btn size="sm" onClick={runRedo} title="Повторить · Ctrl+Shift+Z"><Icon name="history" size={15} /></Btn>
+      <Btn size="sm" onClick={() => editor.current?.addNode()} title="Добавить ветвь · Tab" aria-label="Добавить ветвь"><Icon name="plus" size={15} />Ветвь</Btn>
+      <Btn size="sm" disabled={!historyState.undo} onClick={runUndo} title="Отменить · Ctrl+Z" aria-label="Отменить"><Icon name="undo" size={15} /></Btn>
+      <Btn size="sm" disabled={!historyState.redo} onClick={runRedo} title="Повторить · Ctrl+Shift+Z" aria-label="Повторить"><Icon name="history" size={15} /></Btn>
       <span style={S.spacer} />
       <CustomDropdown alignRight value={map.projectId} placeholder="Без проекта" options={[{ id: null, name: 'Без проекта' }, ...props.projects]} onChange={(id: string | null) => props.onSave({ ...map, projectId: id, updatedAt: new Date().toISOString() })} icon={<Icon name="folder" size={13} />} />
       <Btn size="sm" title="Действия с доской" onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setMenu({ x: rect.right, y: rect.bottom + 6 }); }}><Icon name="menu" size={15} /></Btn>
@@ -213,7 +234,7 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
     <div style={S.canvas} ref={canvasHost} onPointerMove={(event) => { pointer.current = { x: event.clientX, y: event.clientY }; }}>
       <MindMapEditor ref={editor} map={map} tasks={props.tasks} notes={props.notes} projects={props.projects}
         objects={objects} tool={tool} selectedObjectId={objectId} editingObjectId={editingId}
-        onChange={saveData} onObjectsChange={saveObjects} onSelect={setNode} onSelection={setSelection}
+        onChange={saveData} onObjectsChange={saveObjects} onSelect={setNode} onSelection={setSelection} onUndo={runUndo} onRedo={runRedo}
         onSelectObject={selectObject} onEditObject={setEditingId} onToolUse={() => setTool('select')} onScaleChange={setZoom}
         onOpenEntity={(entity) => {
           const task = entity.kind === 'task' ? props.tasks.find((item) => item.id === entity.id) : undefined;
@@ -226,40 +247,64 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
       <div style={S.canvasControls} role="toolbar" aria-label="Масштаб доски">
         <Btn size="sm" style={S.zoom} onClick={() => editor.current?.resetZoom()} title="Сбросить масштаб">{zoom}%</Btn>
         <Btn size="sm" onClick={() => editor.current?.fit()} title="Вписать доску в окно"><Icon name="maximize" size={14} /></Btn>
-        <Btn size="sm" onClick={() => editor.current?.center()} title="По центру"><Icon name="grid" size={14} /></Btn>
+        <Btn size="sm" onClick={() => editor.current?.center()} title="По центру" aria-label="По центру"><Icon name="grid" size={14} /></Btn>
+        <Btn size="sm" onClick={() => setShowHelp((current) => !current)} title="Клавиши и управление" aria-label="Клавиши и управление" aria-pressed={showHelp}>?</Btn>
       </div>
-      {selectedObject && tool === 'select' && <div style={S.selectionBar} role="toolbar" aria-label="Действия с элементом доски">
-        <span style={S.selectionCount}>{OBJECT_LABELS[selectedObject.kind]}</span>
+      {(selectedObject || selection.length > 0) && tool === 'select' && <div style={S.selectionBar} role="toolbar" aria-label="Действия с выделением">
+        <span style={S.selectionCount}>{selectedObject ? OBJECT_LABELS[selectedObject.kind] : selection.length === 1 ? 'Ветвь' : `Ветвей: ${selection.length}`}</span>
         <span style={S.divider} />
-        <div style={S.swatchRow}>
-          {MIND_MAP_BRANCH_COLORS.map((item) => <button key={item.value} type="button" title={item.name} aria-label={`Цвет: ${item.name}`}
-            style={S.swatch(item.value, selectedObject.color === item.value)}
-            onClick={() => saveObjects(objects.map((object) => object.id === selectedObject.id
-              ? { ...object, color: object.color === item.value ? undefined : item.value } : object))} />)}
-        </div>
-        <span style={S.divider} />
-        <Btn size="sm" onClick={() => editObject(selectedObject.id)} title="Править текст"><Icon name="edit" size={14} /></Btn>
-        <Btn size="sm" onClick={() => removeObject(selectedObject.id)} title="Удалить с доски"><Icon name="trash" size={14} /></Btn>
-        <Btn size="sm" onClick={() => setMore((current) => !current)} aria-pressed={more} title="Дополнительные действия"
-          style={more ? { background: 'var(--accent-dim)', color: 'var(--accent)' } : undefined}>Ещё</Btn>
-        {more && <>
-          <span style={S.divider} />
-          <Btn size="sm" onClick={() => duplicateObject(selectedObject)} title="Копия рядом"><Icon name="copy" size={14} /></Btn>
-          <Btn size="sm" onClick={() => reorderObject(selectedObject.id, true)} title="На передний план"><Icon name="chevT" size={14} /></Btn>
-          <Btn size="sm" onClick={() => reorderObject(selectedObject.id, false)} title="На задний план"><Icon name="chevD" size={14} /></Btn>
-        </>}
+        {(selectedObject || node) && <Btn size="sm" onClick={() => selectedObject ? editObject(selectedObject.id) : editor.current?.editNode()} title="Править текст · F2">
+          <Icon name="edit" size={14} />{node && getMindMapMeta(node).entity ? 'Открыть оригинал' : 'Править текст'}
+        </Btn>}
+        <Btn size="sm" onClick={() => { setShowColors((current) => !current); setMore(false); }} aria-pressed={showColors}>Цвет</Btn>
+        {node && !selectedObject && <Btn size="sm" onClick={() => editor.current?.addNode()} title="Дочерняя ветвь · Tab"><Icon name="plus" size={14} />Ветвь</Btn>}
+        <Btn size="sm" disabled={!selectedObject && !selection.some((item) => item.id !== map.data.nodeData.id)}
+          onClick={() => selectedObject ? removeObject(selectedObject.id) : editor.current?.removeNodes(selection.map((item) => item.id))}
+          title="Удалить с доски · Delete" aria-label="Удалить с доски"><Icon name="trash" size={14} /></Btn>
+        <Btn size="sm" onClick={() => { setMore((current) => !current); setShowColors(false); }} aria-pressed={more}>Ещё</Btn>
+        {more && <div style={S.selectionDetails}>
+          {selectedObject ? <>
+            <Btn size="sm" onClick={() => duplicateObject(selectedObject)} title="Копия рядом · Ctrl+D"><Icon name="copy" size={14} />Копия</Btn>
+            <Btn size="sm" onClick={() => reorderObject(selectedObject.id, true)}>На передний план</Btn>
+            <Btn size="sm" onClick={() => reorderObject(selectedObject.id, false)}>На задний план</Btn>
+          </> : <>
+            {node && <>
+              <Btn size="sm" disabled={node.id === map.data.nodeData.id} onClick={() => editor.current?.addSibling()} title="Соседняя ветвь · Enter">Соседняя ветвь</Btn>
+              {!!node.children?.length && node.id !== map.data.nodeData.id && <Btn size="sm" onClick={() => editor.current?.toggleBranch()}>{node.expanded === false ? 'Раскрыть' : 'Свернуть'}</Btn>}
+              {(['task', 'note', 'link', 'files'] as const).map((kind) => <Btn key={kind} size="sm" onClick={(event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                setMore(false); setAction({ kind, x: rect.left, y: rect.top - 380 });
+              }}>{({ task: 'Задача', note: 'Заметка', link: 'Ссылка', files: 'Файлы' })[kind]}</Btn>)}
+            </>}
+            <Btn size="sm" onClick={() => editor.current?.clearSelection()}>Снять выделение</Btn>
+          </>}
+        </div>}
+        {showColors && <div style={S.selectionDetails}>
+          <div style={S.swatchRow}>{MIND_MAP_BRANCH_COLORS.map((item) => {
+            const active = selectedObject ? selectedObject.color === item.value : selection.every((selected) => selected.branchColor === item.value);
+            return <button key={item.value} type="button" title={item.name} aria-label={`Цвет: ${item.name}`} aria-pressed={active}
+              style={S.swatch(item.value, active)} onClick={() => selectedObject
+                ? saveObjects(history.current.present.objects.map((object) => object.id === selectedObject.id ? { ...object, color: item.value } : object))
+                : editor.current?.setColor(selection.map((selected) => selected.id), item.value)} />;
+          })}</div>
+          <Btn size="sm" onClick={() => selectedObject
+            ? saveObjects(history.current.present.objects.map((object) => object.id === selectedObject.id ? { ...object, color: undefined } : object))
+            : editor.current?.setColor(selection.map((selected) => selected.id), null)}>Цвет темы</Btn>
+        </div>}
       </div>}
-      {selection.length > 1 && !selectedObject && tool === 'select' && <div style={S.selectionBar} role="toolbar" aria-label="Действия с выделенными ветвями">
-        <span style={S.selectionCount}>Выбрано ветвей: {selection.length} · перетащите, чтобы перенести</span>
-        <span style={S.divider} />
-        <div style={S.swatchRow}>
-          {MIND_MAP_BRANCH_COLORS.map((item) => <button key={item.value} type="button" title={item.name} aria-label={`Цвет ветвей: ${item.name}`}
-            style={S.swatch(item.value, false)} onClick={() => editor.current?.setColor(selection.map((node) => node.id), item.value)} />)}
-        </div>
-        <span style={S.divider} />
-        <Btn size="sm" onClick={() => editor.current?.removeNodes(selection.map((node) => node.id))} title="Удалить выбранные ветви"><Icon name="trash" size={14} /></Btn>
-        <Btn size="sm" onClick={() => editor.current?.clearSelection()} title="Снять выделение"><Icon name="x" size={14} /></Btn>
-      </div>}
+      {showHelp && <aside style={S.help} aria-label="Клавиши и управление">
+        <div style={S.row}><strong>Управление доской</strong><span style={S.spacer} /><Btn size="sm" onClick={() => setShowHelp(false)} aria-label="Закрыть справку"><Icon name="x" size={14} /></Btn></div>
+        <div>Двойной клик или F2 — править текст</div>
+        <div>Ссылка в тексте: клик — открыть сайт,<br />двойной клик — править текст</div>
+        <div>Tab — дочерняя ветвь · Enter — соседняя</div>
+        <div>В тексте объекта: Enter — новая строка;<br />Esc или Ctrl+Enter — закончить правку</div>
+        <div>T — текст · R — фигура · C — комментарий</div>
+        <div>Ctrl+C / X / V — копировать, вырезать, вставить</div>
+        <div>Ctrl+Z — отменить · Ctrl+Shift+Z — повторить</div>
+        <div>Пробел + перетаскивание — двигать полотно</div>
+        <div>Колесо — масштаб · Ctrl+клик — выбор ветвей</div>
+        <span style={S.muted}>На Mac вместо Ctrl используйте ⌘.</span>
+      </aside>}
       {tool !== 'select' && <div style={S.toolHint} role="status">
         <Icon name={activeTool?.icon || 'pointer'} size={13} />
         <span>Кликните по доске, чтобы добавить {activeTool?.label.toLowerCase()}. Esc — отмена.</span>

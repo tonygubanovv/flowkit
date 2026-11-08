@@ -9,12 +9,17 @@ import { patchBoardSvg } from '../lib/MindMapSvg';
 import { genId } from '../lib/Helpers';
 import { MIND_MAP_CSS, MIND_MAP_STYLES as S, MIND_MAP_THEME } from '../styles/MindMapStyles';
 import { MindMapObjects, MindMapTool } from './MindMapObjects';
+import { createBoardLinkify } from './MindMapLinks';
 
 export interface MindMapEditorHandle {
   addNode: (node?: NodeObj) => void;
   patchNode: (id: string, patch: Partial<NodeObj>) => void;
-  undo: () => void;
-  redo: () => void;
+  flush: () => void;
+  replaceData: (data: MindElixirData) => void;
+  focus: () => void;
+  editNode: () => void;
+  addSibling: () => void;
+  toggleBranch: () => void;
   center: () => void;
   fit: () => void;
   resetZoom: () => void;
@@ -38,6 +43,8 @@ interface Props {
   selectedObjectId: string | null;
   editingObjectId: string | null;
   onChange: (data: MindElixirData) => void;
+  onUndo: () => void;
+  onRedo: () => void;
   onObjectsChange: (objects: MindMapObject[]) => void;
   onSelect: (node: NodeObj | null) => void;
   onSelection: (nodes: NodeObj[]) => void;
@@ -99,6 +106,7 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
   const latest = useRef(props);
   latest.current = props;
   const saveRef = useRef<() => void>(() => {});
+  const flushRef = useRef<() => void>(() => {});
   const [error, setError] = useState(false);
   const [scale, setScale] = useState(100);
   const [layerHost, setLayerHost] = useState<HTMLElement | null>(null);
@@ -118,7 +126,12 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
   };
 
   useImperativeHandle(ref, () => ({
-    addNode: (node) => { void instance.current?.addChild(undefined, node); },
+    addNode: (node) => {
+      const mind = instance.current;
+      if (!mind) return;
+      latest.current.onSelectObject(null);
+      void mind.addChild(mind.currentNodes[0] || mind.findEle(mind.nodeData.id), node);
+    },
     patchNode: (id, patch) => {
       const mind = instance.current;
       if (!mind) return;
@@ -128,8 +141,30 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
         void mind.reshapeNode(element, { ...patch, topic: data.nodeData.topic, tags: data.nodeData.tags });
       }
     },
-    undo: () => { instance.current?.undo(); },
-    redo: () => { instance.current?.redo(); },
+    flush: () => flushRef.current(),
+    replaceData: (data) => {
+      const mind = instance.current;
+      if (!mind) return;
+      const ids = mind.currentNodes.map((element) => element.nodeObj.id);
+      mind.refresh(projectMindMapData(structuredClone(data), latest.current.tasks, latest.current.notes, latest.current.projects));
+      mind.selectNodes(findTopics(mind, ids));
+      emitSelection(mind, latest.current);
+    },
+    focus: () => instance.current?.container.focus({ preventScroll: true }),
+    editNode: () => {
+      const mind = instance.current;
+      const topic = mind?.currentNodes[0];
+      if (!mind || !topic) return;
+      const entity = getMindMapMeta(topic.nodeObj).entity;
+      if (entity) latest.current.onOpenEntity(entity);
+      else void mind.beginEdit(topic);
+    },
+    addSibling: () => { void instance.current?.insertSibling('after'); },
+    toggleBranch: () => {
+      const mind = instance.current;
+      const topic = mind?.currentNodes[0];
+      if (mind && topic && topic.nodeObj.id !== mind.nodeData.id) mind.expandNode(topic);
+    },
     center: () => { instance.current?.toCenter(); },
     fit: () => {
       const mind = instance.current;
@@ -222,8 +257,9 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
     let pending: MindElixirData | null = null;
     const flush = () => {
       if (timer) clearTimeout(timer);
-      if (pending) { latest.current.onChange(pending); pending = null; }
+      if (pending) { const data = pending; pending = null; latest.current.onChange(data); }
     };
+    flushRef.current = flush;
     const requestAction = (action: MindMapNodeAction) => (event: MouseEvent) => {
       const node = mind.currentNodes[0]?.nodeObj || mind.nodeData;
       const menu = mind.container.querySelector<HTMLElement>('.context-menu');
@@ -260,12 +296,16 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
         { name: 'Ссылка', onclick: requestAction('link') },
         { name: 'Изображение и PDF', onclick: requestAction('files') },
       ] }, toolBar: false,
-      allowUndo: true, keypress: true, handleWheel: zoomByWheel, scaleMin: .2, scaleMax: 2,
-      before: { beginEdit: (element) => !getMindMapMeta(element?.nodeObj || mind.currentNodes[0]?.nodeObj || mind.nodeData).entity },
+      allowUndo: false, keypress: true, handleWheel: zoomByWheel, scaleMin: .2, scaleMax: 2,
+      before: { beginEdit: (element) => {
+        const entity = getMindMapMeta(element?.nodeObj || mind.currentNodes[0]?.nodeObj || mind.nodeData).entity;
+        if (entity) latest.current.onOpenEntity(entity);
+        return !entity;
+      } },
     });
     instance.current = mind;
     try {
-      mind.init(projectMindMapData(latest.current.map.data, latest.current.tasks, latest.current.notes, latest.current.projects));
+      mind.init(projectMindMapData(structuredClone(latest.current.map.data), latest.current.tasks, latest.current.notes, latest.current.projects));
       setLayerHost(mind.map);
       mind.move = (dx, dy) => {
         const matrix = new DOMMatrixReadOnly(mind.map.style.transform);
@@ -275,6 +315,9 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
       };
       mind.selectNode(mind.findEle(mind.nodeData.id));
       emitSelection(mind, latest.current);
+      const linkify = createBoardLinkify(mind.nodes, (topic) => { void mind.beginEdit(topic as Topic); }, (topic) => mind.selectNode(topic as Topic));
+      linkify.refresh();
+      mind.disposable.push(() => linkify.dispose());
       const save = (defer = false) => {
         pending = mind.getData();
         if (timer) clearTimeout(timer);
@@ -282,10 +325,8 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
         else flush();
         emitSelection(mind, latest.current);
       };
-      const undo = mind.undo.bind(mind);
-      const redo = mind.redo.bind(mind);
-      mind.undo = () => { undo(); syncEntities(mind, latest.current); save(); };
-      mind.redo = () => { redo(); syncEntities(mind, latest.current); save(); };
+      mind.undo = () => latest.current.onUndo();
+      mind.redo = () => latest.current.onRedo();
       mind.bus.addListener('operation', (operation) => { if (operation.name !== 'beginEdit') save(); });
       mind.bus.addListener('expandNode', () => save());
       mind.bus.addListener('changeDirection', () => save());

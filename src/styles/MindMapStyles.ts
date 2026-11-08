@@ -27,7 +27,10 @@ export const MIND_MAP_STYLES = {
   muted: { color: 'var(--muted)', fontSize: 12, lineHeight: 1.6 } as CSSProperties,
   label: { color: 'var(--muted)', fontSize: 11, fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase' } as CSSProperties,
   workspace: { flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' } as CSSProperties,
-  toolbar: { minHeight: 53, display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', borderBottom: '1px solid var(--border)' } as CSSProperties,
+  toolbar: { minHeight: 53, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, padding: '10px 16px', borderBottom: '1px solid var(--border)' } as CSSProperties,
+  activeTool: { background: 'var(--accent-dim)', color: 'var(--accent)' } as CSSProperties,
+  selectionDetails: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, flexBasis: '100%', paddingTop: 8, borderTop: '1px solid var(--border)' } as CSSProperties,
+  help: { position: 'absolute', right: 16, bottom: 60, width: 'min(340px, calc(100% - 32px))', boxSizing: 'border-box', maxHeight: 'calc(100% - 80px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, padding: 16, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--text2)', fontSize: 12, lineHeight: 1.6, zIndex: 14 } as CSSProperties,
   popup: (x: number, y: number): CSSProperties => ({ ...UI.modal.popover({}), position: 'fixed',
     left: `clamp(16px, ${x}px, calc(100vw - 316px))`, top: `clamp(72px, ${y}px, calc(100dvh - 420px))`,
     width: 300, maxHeight: 'min(480px, calc(100dvh - 96px))', overflowY: 'auto', zIndex: 1500,
@@ -47,7 +50,7 @@ export const MIND_MAP_STYLES = {
   canvas: { position: 'relative', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' } as CSSProperties,
   canvasControls: { position: 'absolute', right: 16, bottom: 14, display: 'flex', alignItems: 'center', gap: 2, padding: 3, borderRadius: 8, background: 'var(--card)', border: '1px solid var(--border)', zIndex: 12 } as CSSProperties,
   zoom: { minWidth: 42, textAlign: 'center', color: 'var(--text2)', fontSize: 11, fontVariantNumeric: 'tabular-nums' } as CSSProperties,
-  selectionBar: { position: 'absolute', left: '50%', bottom: 14, transform: 'translateX(-50%)', display: 'flex', flexWrap: 'wrap', width: 'max-content', maxWidth: 'calc(100% - 24px)', alignItems: 'center', gap: 9, padding: '5px 6px 5px 12px', borderRadius: 8, background: 'var(--card)', border: '1px solid var(--border)', zIndex: 12 } as CSSProperties,
+  selectionBar: { position: 'absolute', left: '50%', bottom: 60, transform: 'translateX(-50%)', display: 'flex', flexWrap: 'wrap', width: 'max-content', maxWidth: 'min(620px, calc(100% - 32px))', boxSizing: 'border-box', maxHeight: 'calc(100% - 80px)', overflowY: 'auto', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 8, background: 'var(--card)', border: '1px solid var(--border)', zIndex: 12 } as CSSProperties,
   selectionCount: { color: 'var(--text2)', fontSize: 12 } as CSSProperties,
   divider: { width: 1, height: 20, background: 'var(--border)', flexShrink: 0 } as CSSProperties,
   notice: { position: 'absolute', left: '50%', bottom: 56, transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 8, maxWidth: 380, padding: '7px 8px 7px 12px', borderRadius: 8, background: 'var(--card)', border: '1px solid var(--danger)', color: 'var(--text)', fontSize: 12, zIndex: 12 } as CSSProperties,
@@ -98,14 +101,16 @@ export const MIND_MAP_CSS = `
 .fk-mind-map me-tpc .tags { color: var(--muted); font-size: 10px; }
 .fk-mind-map me-tpc .tags span { color: var(--text2); background: var(--card-hov); border: none; border-radius: 4px; }
 .fk-mind-map me-tpc a { color: var(--text2); }
+.fk-mind-map .fk-board-link, .fk-mind-layer .fk-board-link { color: var(--accent); cursor: pointer; text-decoration: underline; text-decoration-thickness: 1px; text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent); text-underline-offset: 3px; }
+.fk-mind-map .fk-board-link:hover, .fk-mind-layer .fk-board-link:hover { color: color-mix(in srgb, var(--accent) 82%, #000); text-decoration-color: var(--accent); }
+.fk-mind-map .fk-board-link:visited, .fk-mind-layer .fk-board-link:visited { color: color-mix(in srgb, var(--accent) 88%, var(--muted)); }
 .fk-mind-map[data-tool] .map-container { cursor: crosshair; }
 .fk-mind-map[data-tool] me-tpc { cursor: crosshair; }
 .fk-mind-layer { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; z-index: 30; }
 .fk-mind-object { pointer-events: auto; }
 .fk-mind-editor::selection { background: var(--accent-dim); }
 .fk-mind-pin-card { opacity: 0; pointer-events: none; }
-.fk-mind-pin:hover > .fk-mind-pin-card, .fk-mind-pin[data-open] > .fk-mind-pin-card, .fk-mind-pin-edit .fk-mind-pin-card { opacity: 1; }
-.fk-mind-pin-edit .fk-mind-pin-card { pointer-events: auto; }
+.fk-mind-pin:hover > .fk-mind-pin-card, .fk-mind-pin[data-open] > .fk-mind-pin-card, .fk-mind-pin-edit .fk-mind-pin-card { opacity: 1; pointer-events: auto; }
 .fk-mind-layer .fk-mind-object:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .fk-mind-map .map-container me-parent me-epd,
 .fk-mind-map .map-container me-parent me-epd.minus { opacity: 1; border-radius: 50%; background-image: none !important; background-color: var(--card-act); border: 1px solid var(--border-strong); }
