@@ -1,7 +1,6 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import MindElixir, { MindElixirData, NodeObj, Topic } from 'mind-elixir';
-import { ru } from 'mind-elixir/i18n';
 import 'mind-elixir/style.css';
 import { MindMap, MindMapNodeMeta, MindMapObject, Note, Project, Task } from '../types/Schemas';
 import { getMindMapMeta, projectMindMapData, walkMindMap } from '../lib/MindMaps';
@@ -17,7 +16,7 @@ export interface MindMapEditorHandle {
   flush: () => void;
   replaceData: (data: MindElixirData) => void;
   focus: () => void;
-  editNode: () => void;
+  editNode: (id?: string) => void;
   addSibling: () => void;
   toggleBranch: () => void;
   center: () => void;
@@ -27,11 +26,13 @@ export interface MindMapEditorHandle {
   setColor: (ids: string[], color: string | null) => void;
   removeNodes: (ids: string[]) => void;
   clearSelection: () => void;
+  placeObject: (tool: MindMapTool, clientX: number, clientY: number) => void;
+  copySelection: () => NodeObj[];
+  pasteNodes: (nodes: NodeObj[]) => void;
+  duplicateSelection: () => void;
   toCanvas: (clientX: number, clientY: number) => { x: number; y: number } | null;
   exportSvg: () => Promise<Blob | null>;
 }
-
-export type MindMapNodeAction = 'task' | 'note' | 'link' | 'files' | 'color';
 
 interface Props {
   map: MindMap;
@@ -50,14 +51,26 @@ interface Props {
   onSelection: (nodes: NodeObj[]) => void;
   onSelectObject: (id: string | null) => void;
   onEditObject: (id: string | null) => void;
-  onObjectAction: (id: string) => void;
+  onObjectMenu: (id: string, point: { x: number; y: number }) => void;
   onToolUse: () => void;
   onScaleChange: (percent: number) => void;
-  onNodeAction: (node: NodeObj, action: MindMapNodeAction, point: { x: number; y: number }) => void;
+  onNodeMenu: (node: NodeObj, point: { x: number; y: number }) => void;
+  onCanvasMenu: (point: { x: number; y: number }) => void;
   onOpenEntity: (entity: NonNullable<MindMapNodeMeta['entity']>) => void;
 }
 
-const COLLAPSE_ITEM = 'Свернуть ветвь';
+const cloneNode = (node: NodeObj): NodeObj =>
+  JSON.parse(JSON.stringify(node, (key, value) => key === 'parent' ? undefined : value)) as NodeObj;
+
+const reseedNode = (node: NodeObj): NodeObj => {
+  const copy = cloneNode(node);
+  const assign = (item: NodeObj) => {
+    item.id = genId();
+    item.children?.forEach(assign);
+  };
+  assign(copy);
+  return copy;
+};
 
 const emitSelection = (mind: MindElixir, props: Props) => {
   const nodes = (mind.currentNodes || []).map((element) => ({ ...element.nodeObj }));
@@ -151,13 +164,47 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
       emitSelection(mind, latest.current);
     },
     focus: () => instance.current?.container.focus({ preventScroll: true }),
-    editNode: () => {
+    editNode: (id) => {
       const mind = instance.current;
-      const topic = mind?.currentNodes[0];
+      const topic = id ? mind?.findEle(id) : mind?.currentNodes[0];
       if (!mind || !topic) return;
       const entity = getMindMapMeta(topic.nodeObj).entity;
       if (entity) latest.current.onOpenEntity(entity);
       else void mind.beginEdit(topic);
+    },
+    placeObject: (tool, clientX, clientY) => placeObject(tool, clientX, clientY),
+    copySelection: () => {
+      const mind = instance.current;
+      if (!mind) return [];
+      const selected = new Set(mind.currentNodes.map((element) => element.nodeObj));
+      return mind.currentNodes
+        .filter((element) => {
+          if (element.nodeObj.id === mind.nodeData.id) return false;
+          for (let parent = element.nodeObj.parent; parent; parent = parent.parent) {
+            if (selected.has(parent)) return false;
+          }
+          return true;
+        })
+        .map((element) => cloneNode(element.nodeObj));
+    },
+    pasteNodes: (nodes) => {
+      const mind = instance.current;
+      if (!mind || !nodes.length) return;
+      const target = mind.currentNodes.length === 1 ? mind.currentNodes[0] : mind.findEle(mind.nodeData.id);
+      if (!target) return;
+      mind.copyNodes(nodes.map((nodeObj) => ({ nodeObj } as Topic)), target);
+      mind.container.focus({ preventScroll: true });
+    },
+    duplicateSelection: () => {
+      const mind = instance.current;
+      const source = mind?.currentNodes[0];
+      if (!mind || !source) return;
+      if (source.nodeObj.id === mind.nodeData.id) {
+        void mind.addChild(source, reseedNode(source.nodeObj));
+        return;
+      }
+      mind.insertSibling('after', source, reseedNode(source.nodeObj));
+      mind.container.focus({ preventScroll: true });
     },
     addSibling: () => { void instance.current?.insertSibling('after'); },
     toggleBranch: () => {
@@ -260,12 +307,6 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
       if (pending) { const data = pending; pending = null; latest.current.onChange(data); }
     };
     flushRef.current = flush;
-    const requestAction = (action: MindMapNodeAction) => (event: MouseEvent) => {
-      const node = mind.currentNodes[0]?.nodeObj || mind.nodeData;
-      const menu = mind.container.querySelector<HTMLElement>('.context-menu');
-      if (menu) menu.hidden = true;
-      latest.current.onNodeAction({ ...node }, action, { x: event.clientX, y: event.clientY });
-    };
     const zoomByWheel = (event: WheelEvent) => {
       if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
         event.preventDefault();
@@ -282,20 +323,7 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
     };
     const mind: MindElixir = new MindElixir({
       el: host.current, theme: MIND_MAP_THEME, direction: 2, newTopicName: 'Новая мысль',
-      contextMenu: { locale: { ...ru, addChild: 'Добавить ветвь', addSibling: 'Добавить соседний узел',
-        link: 'Соединить узлы', linkBidirectional: 'Двусторонняя связь', summary: 'Объединить скобкой', clickTips: 'Выберите второй узел' }, focus: false, link: true, extend: [
-        { name: COLLAPSE_ITEM, onclick: () => {
-          const topic = mind.currentNodes[0];
-          const menu = mind.container.querySelector<HTMLElement>('.context-menu');
-          if (menu) menu.hidden = true;
-          if (topic) mind.expandNode(topic);
-        } },
-        { name: 'Цвет ветви', onclick: requestAction('color') },
-        { name: 'Связать задачу', onclick: requestAction('task') },
-        { name: 'Связать заметку', onclick: requestAction('note') },
-        { name: 'Ссылка', onclick: requestAction('link') },
-        { name: 'Изображение и PDF', onclick: requestAction('files') },
-      ] }, toolBar: false,
+      contextMenu: false, toolBar: false,
       allowUndo: false, keypress: true, handleWheel: zoomByWheel, scaleMin: .2, scaleMax: 2,
       before: { beginEdit: (element) => {
         const entity = getMindMapMeta(element?.nodeObj || mind.currentNodes[0]?.nodeObj || mind.nodeData).entity;
@@ -336,13 +364,6 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
       mind.bus.addListener('scale', (value) => reportScale(Math.round(value * 100)));
       mind.bus.addListener('updateArrowDelta', () => save(true));
       saveRef.current = save;
-      mind.bus.addListener('showContextMenu', () => {
-        const node = mind.currentNodes[0]?.nodeObj || mind.nodeData;
-        const item = mind.container.querySelector<HTMLElement>(`[id="${COLLAPSE_ITEM}"]`);
-        if (!item?.children.length) return;
-        item.hidden = node.id === mind.nodeData.id || !node.children?.length;
-        item.children[0].textContent = node.expanded === false ? 'Раскрыть ветвь' : COLLAPSE_ITEM;
-      });
       const expandAll = (event: MouseEvent) => {
         if ((event.target as Element | null)?.tagName === 'ME-EPD' && (event.ctrlKey || event.metaKey)) save();
       };
@@ -405,25 +426,23 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
       if (entity) { event.stopPropagation(); event.preventDefault(); latest.current.onOpenEntity(entity); }
     }} onContextMenuCapture={(event) => {
       const mind = instance.current;
-      if (!mind || !(event.target instanceof Element) || event.nativeEvent.defaultPrevented) return;
+      if (!mind || !(event.target instanceof Element)) return;
+      if (event.target.closest('.fk-mind-object')) return;
       event.preventDefault();
       event.stopPropagation();
       const element = event.target;
-      const topic = element?.closest<HTMLElement>('me-tpc')
-        ?? element?.closest<HTMLElement>('me-epd')?.parentElement?.querySelector<HTMLElement>('me-tpc') ?? null;
+      const topic = element.closest<HTMLElement>('me-tpc')
+        ?? element.closest<HTMLElement>('me-epd')?.parentElement?.querySelector<HTMLElement>('me-tpc') ?? null;
       if (!topic) {
-        const menu = mind.container.querySelector<HTMLElement>('.context-menu');
-        if (menu) menu.hidden = true;
+        latest.current.onCanvasMenu({ x: event.clientX, y: event.clientY });
         return;
       }
       if (!topic.classList.contains('selected')) mind.selectNode(topic as Topic);
-      const menuEvent = new MouseEvent('contextmenu', { clientX: event.clientX, clientY: event.clientY });
-      Object.defineProperty(menuEvent, 'target', { value: topic });
-      mind.bus.fire('showContextMenu', menuEvent);
+      latest.current.onNodeMenu({ ...(topic as Topic).nodeObj }, { x: event.clientX, y: event.clientY });
     }} />
     {layerHost && createPortal(
       <MindMapObjects objects={props.objects} scale={scale / 100} selectedId={props.selectedObjectId} editingId={props.editingObjectId}
-        onSelect={selectObject} onEdit={props.onEditObject} onCommit={props.onObjectsChange} onObjectAction={props.onObjectAction} />,
+        onSelect={selectObject} onEdit={props.onEditObject} onCommit={props.onObjectsChange} onObjectMenu={props.onObjectMenu} />,
       layerHost)}
     {error ? <div role="alert" style={S.empty}>Не удалось открыть карту. Данные сохранены — выберите другую карту или обновите страницу.</div> : null}
   </div>;

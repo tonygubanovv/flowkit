@@ -14,5 +14,6 @@ export { Sparkline } from './Sparkline';
 export { Logo } from './Logo';
 export { BrandLogo } from './BrandLogo';
 export { ContextMenu } from './ContextMenu';
+export type { ContextMenuItem } from './ContextMenu';
 export { ContextMenuSubmenuTrigger } from './ContextMenuSubmenuTrigger';
 export { Toast } from './Toast';

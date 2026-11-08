@@ -2964,7 +2964,7 @@ export const UI = {
       fontFamily,
     }),
 
-    contextItem: (danger = false): CSSProperties => ({
+    contextItem: (danger = false, disabled = false): CSSProperties => ({
       width: '100%',
       display: 'flex',
       alignItems: 'center',
@@ -2974,12 +2974,23 @@ export const UI = {
       borderRadius: 7,
       background: 'transparent',
       color: danger ? T.danger : T.text,
-      cursor: 'pointer',
+      cursor: disabled ? 'default' : 'pointer',
+      opacity: disabled ? 0.55 : 1,
       fontSize: 13.5,
       fontWeight: 500,
       textAlign: 'left',
       transition: 'background .1s',
       fontFamily: 'inherit',
+    }),
+
+    contextSwatch: (color: string, active = false): CSSProperties => ({
+      width: 14,
+      height: 14,
+      borderRadius: '50%',
+      flexShrink: 0,
+      boxSizing: 'border-box',
+      background: color,
+      border: active ? `2px solid ${T.text}` : '1px solid var(--border2)',
     }),
 
     separator: {

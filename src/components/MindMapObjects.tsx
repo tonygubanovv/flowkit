@@ -20,7 +20,7 @@ interface Props {
   onSelect: (id: string | null) => void;
   onEdit: (id: string | null) => void;
   onCommit: (objects: MindMapObject[]) => void;
-  onObjectAction: (id: string) => void;
+  onObjectMenu: (id: string, point: { x: number; y: number }) => void;
 }
 
 const lineHeightOf = (object: MindMapObject): number => {
@@ -181,7 +181,7 @@ export function MindMapObjects(props: Props) {
       if (target?.tagName === 'TEXTAREA') return;
       event.preventDefault();
       const id = target?.closest('[data-object-id]')?.getAttribute('data-object-id');
-      if (id) propsRef.current.onObjectAction(id);
+      if (id) propsRef.current.onObjectMenu(id, { x: event.clientX, y: event.clientY });
     };
     // Клавиши не должны доходить до движка: он трактует Delete/Backspace/Enter как команды карты.
     const onKeyDown = (event: KeyboardEvent) => {

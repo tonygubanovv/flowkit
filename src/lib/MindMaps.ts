@@ -103,7 +103,7 @@ export const mindMapToMarkdown = (map: MindMap, tasks: Task[], notes: Note[], pr
   const project = projects.find((item) => item.id === map.projectId);
   const blocks = (map.objects || []).filter((item) => item.text.trim())
     .map((item) => `- ${markdownCell(item.text)}`).join('\n');
-  return `# ${markdownCell(map.title)}\n\n${project ? `Проект: ${markdownCell(project.name)}\n\n` : ''}${line(map.data.nodeData, 0)}${blocks ? `\n## Заметки на доске\n\n${blocks}\n` : ''}`;
+  return `# ${markdownCell(map.title)}\n\n<!-- flowkit-board-id: ${encodeURIComponent(map.id)} -->\n\n${project ? `Проект: ${markdownCell(project.name)}\n\n` : ''}${line(map.data.nodeData, 0)}${blocks ? `\n## Заметки на доске\n\n${blocks}\n` : ''}`;
 };
 
 export const normalizeMindMapObjects = (value: unknown): MindMapObject[] => {
