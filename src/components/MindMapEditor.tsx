@@ -41,6 +41,7 @@ interface Props {
   projects: Project[];
   objects: MindMapObject[];
   tool: MindMapTool;
+  navigationMode: 'select' | 'pan';
   selectedObjectId: string | null;
   editingObjectId: string | null;
   onChange: (data: MindElixirData) => void;
@@ -418,7 +419,53 @@ export const MindMapEditor = forwardRef<MindMapEditorHandle, Props>(function Min
     props.onSelectObject(id);
   };
 
-  return <div className="fk-mind-map" data-mind-map data-tool={props.tool === 'select' ? undefined : props.tool} style={S.canvas}>
+  const spaceHeld = useRef(false);
+  const pan = useRef<{ id: number; x: number; y: number } | null>(null);
+  const [panning, setPanning] = useState(false);
+  const [temporaryPan, setTemporaryPan] = useState(false);
+  const suppressClick = useRef(false);
+  useEffect(() => {
+    const down = (event: KeyboardEvent) => {
+      if (event.code !== 'Space' || event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
+      if ((event.target as HTMLElement | null)?.closest('input, textarea, button, a, select, [contenteditable]:not([contenteditable="false"]), [role="dialog"]')) return;
+      event.preventDefault();
+      spaceHeld.current = true; setTemporaryPan(true);
+    };
+    const reset = () => { spaceHeld.current = false; setTemporaryPan(false); };
+    const up = (event: KeyboardEvent) => { if (event.code === 'Space') reset(); };
+    const blur = () => { reset(); pan.current = null; setPanning(false); };
+    document.addEventListener('keydown', down);
+    document.addEventListener('keyup', up);
+    window.addEventListener('blur', blur);
+    return () => { document.removeEventListener('keydown', down); document.removeEventListener('keyup', up); window.removeEventListener('blur', blur); };
+  }, []);
+
+  return <div className="fk-mind-map" data-mind-map data-tool={props.tool === 'select' ? undefined : props.tool} style={S.canvas}
+    data-navigation={panning ? 'grabbing' : props.navigationMode === 'pan' || temporaryPan ? 'grab' : undefined}
+    onPointerDownCapture={(event) => {
+      suppressClick.current = false;
+      if (!(event.target instanceof Element) || event.target.closest('input, textarea, [contenteditable]:not([contenteditable="false"])')) return;
+      if (event.button !== 1 && !(event.button === 0 && (props.navigationMode === 'pan' || spaceHeld.current))) return;
+      event.preventDefault(); event.stopPropagation();
+      pan.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      event.currentTarget.setPointerCapture(event.pointerId); setPanning(true);
+    }}
+    onPointerMoveCapture={(event) => {
+      const gesture = pan.current;
+      if (!gesture || gesture.id !== event.pointerId) return;
+      event.preventDefault(); event.stopPropagation();
+      instance.current?.move(event.clientX - gesture.x, event.clientY - gesture.y);
+      gesture.x = event.clientX; gesture.y = event.clientY;
+    }}
+    onPointerUpCapture={(event) => {
+      if (pan.current?.id !== event.pointerId) return;
+      event.preventDefault(); event.stopPropagation();
+      suppressClick.current = true; pan.current = null; setPanning(false);
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    }}
+    onLostPointerCapture={() => { pan.current = null; setPanning(false); }}
+    onClickCapture={(event) => { if (suppressClick.current || props.navigationMode === 'pan') { event.preventDefault(); event.stopPropagation(); } }}
+    onDoubleClickCapture={(event) => { if (props.navigationMode === 'pan') { event.preventDefault(); event.stopPropagation(); } }}>
     <style>{MIND_MAP_CSS}</style>
     <div ref={host} style={S.host} aria-label="Полотно доски" onDoubleClickCapture={(event) => {
       const topic = event.target instanceof Element ? event.target.closest('me-tpc') as Topic | null : null;

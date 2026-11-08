@@ -49,6 +49,7 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
   const [selection, setSelection] = useState<NodeObj[]>([]);
   const [notice, setNotice] = useState('');
   const [tool, setTool] = useState<MindMapTool>('select');
+  const [navigationMode, setNavigationMode] = useState<'select' | 'pan'>('select');
   const [zoom, setZoom] = useState(100);
   const [objectId, setObjectId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -158,15 +159,21 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
       const target = event.target as HTMLElement | null;
       if (event.isComposing || target?.closest('input, textarea, [contenteditable]:not([contenteditable="false"]), [role="dialog"]')) return;
       if (event.key === 'Escape') {
-        setTool('select'); setShowHelp(false); setMenu(null);
+        setTool('select'); setNavigationMode('select'); setShowHelp(false); setMenu(null);
         setObjectId(null); editor.current?.clearSelection();
         return;
       }
       if (!(event.ctrlKey || event.metaKey)) {
         if (target?.closest('button, a, select')) return;
         if (event.altKey || event.shiftKey) return;
+        if (event.code === 'KeyH' || event.code === 'KeyV') {
+          event.preventDefault(); event.stopPropagation();
+          setNavigationMode(event.code === 'KeyH' ? 'pan' : 'select'); setTool('select');
+          return;
+        }
         const nextTool = { KeyT: 'text', KeyR: 'rect', KeyC: 'comment' }[event.code] as MindMapTool | undefined;
         if (nextTool) {
+          setNavigationMode('select');
           event.preventDefault(); event.stopPropagation();
           setTool((current) => current === nextTool ? 'select' : nextTool);
         } else if (event.key === 'F2' && selectedObject) {
@@ -335,13 +342,15 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
         <CustomDropdown value={map.id} placeholder="Выбрать доску" options={props.maps.map((item) => ({ id: item.id, name: item.title }))} onChange={(id: string) => props.onSelect(id)} />}
       <Btn size="sm" disabled={!historyState.undo} onClick={runUndo} title="Отменить · Ctrl+Z" aria-label="Отменить"><Icon name="undo" size={15} /></Btn>
       <Btn size="sm" disabled={!historyState.redo} onClick={runRedo} title="Повторить · Ctrl+Shift+Z" aria-label="Повторить"><Icon name="history" size={15} /></Btn>
+      <Btn size="sm" variant={navigationMode === 'select' ? 'subtle' : 'ghost'} aria-pressed={navigationMode === 'select'} title="Выбор ветвей и объектов · V" onClick={() => { setNavigationMode('select'); setTool('select'); }}><Icon name="pointer" size={14} />Выбор</Btn>
+      <Btn size="sm" variant={navigationMode === 'pan' ? 'subtle' : 'ghost'} aria-pressed={navigationMode === 'pan'} title="Тяните доску левой кнопкой мыши · H" onClick={() => { editor.current?.flush(); setEditingId(null); setNavigationMode('pan'); setTool('select'); }}><Icon name="hand" size={14} />Перемещение</Btn>
       <span style={S.spacer} />
       <CustomDropdown alignRight value={map.projectId} placeholder="Без проекта" options={[{ id: null, name: 'Без проекта' }, ...props.projects]} onChange={(id: string | null) => props.onSave({ ...map, projectId: id, updatedAt: new Date().toISOString() })} icon={<Icon name="folder" size={13} />} />
       <Btn size="sm" title="Действия с доской" onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setMenu({ kind: 'board', x: rect.right, y: rect.bottom + 6 }); }}><Icon name="menu" size={15} /></Btn>
     </div>
     <div style={S.canvas} ref={canvasHost} onPointerMove={(event) => { pointer.current = { x: event.clientX, y: event.clientY }; }}>
       <MindMapEditor ref={editor} map={map} tasks={props.tasks} notes={props.notes} projects={props.projects}
-        objects={objects} tool={tool} selectedObjectId={objectId} editingObjectId={editingId}
+        objects={objects} tool={tool} navigationMode={navigationMode} selectedObjectId={objectId} editingObjectId={editingId}
         onChange={saveData} onObjectsChange={saveObjects} onSelect={setNode} onSelection={setSelection} onUndo={runUndo} onRedo={runRedo}
         onSelectObject={selectObject} onEditObject={setEditingId} onToolUse={() => setTool('select')} onScaleChange={setZoom}
         onOpenEntity={(entity) => {
@@ -370,7 +379,8 @@ function MapWorkspace({ map, ...props }: Props & { map: MindMap }) {
         <div>В тексте объекта: Enter — новая строка;<br />Esc или Ctrl+Enter — закончить правку</div>
         <div>Ctrl+C / X / V — копировать, вырезать, вставить ветви или объект</div>
         <div>Ctrl+D — копия рядом · Ctrl+Z — отменить</div>
-        <div>Пробел + перетаскивание — двигать полотно</div>
+        <div>H — перемещение левой кнопкой · V — выбор</div>
+        <div>Пробел + перетаскивание или зажатое колёсико — двигать полотно</div>
         <div>Колесо — масштаб · Ctrl+клик — выбор ветвей</div>
         <span style={S.muted}>На Mac вместо Ctrl используйте ⌘.</span>
       </aside>}

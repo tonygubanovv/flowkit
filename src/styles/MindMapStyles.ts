@@ -82,6 +82,8 @@ export const MIND_MAP_CSS = `
 .fk-mind-map .fk-board-link, .fk-mind-layer .fk-board-link { color: var(--accent); cursor: pointer; text-decoration: underline; text-decoration-thickness: 1px; text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent); text-underline-offset: 3px; }
 .fk-mind-map .fk-board-link:hover, .fk-mind-layer .fk-board-link:hover { color: color-mix(in srgb, var(--accent) 82%, #000); text-decoration-color: var(--accent); }
 .fk-mind-map .fk-board-link:visited, .fk-mind-layer .fk-board-link:visited { color: color-mix(in srgb, var(--accent) 88%, var(--muted)); }
+.fk-mind-map[data-navigation="grab"], .fk-mind-map[data-navigation="grab"] * { cursor: grab !important; }
+.fk-mind-map[data-navigation="grabbing"], .fk-mind-map[data-navigation="grabbing"] * { cursor: grabbing !important; user-select: none; }
 .fk-mind-map[data-tool] .map-container { cursor: crosshair; }
 .fk-mind-map[data-tool] me-tpc { cursor: crosshair; }
 .fk-mind-layer { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; z-index: 30; }

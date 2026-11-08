@@ -58,6 +58,7 @@ export const Icon = memo(({ name, size = 18, color = 'currentColor', style: s }:
     arrowDown: 'M12 5v14m0 0l-5-5m5 5l5-5',
     chevronsDown: 'M7 7l5 5 5-5M7 13l5 5 5-5',
     spark: 'M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3zm7-1l.8 2.2L22 5l-2.2.8L19 8l-.8-2.2L16 5l2.2-.8L19 2zM5 16l.8 2.2L8 19l-2.2.8L5 22l-.8-2.2L2 19l2.2-.8L5 16z',
+    hand: 'M8 13V5a2 2 0 0 1 4 0v7-8a2 2 0 0 1 4 0v8-6a2 2 0 0 1 4 0v9c0 4-3 7-7 7h-1c-2 0-4-1-5-3l-4-6a2 2 0 0 1 3-2l2 2z',
     pointer: 'M5 3l14 8-6 1.6L10 19 5 3z',
     type: 'M4 6V4h16v2M12 4v16M9 20h6',
     rect: 'M4 6h16v12H4z',
